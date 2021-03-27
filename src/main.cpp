@@ -131,7 +131,8 @@ void readMessage(unsigned char *msg, unsigned char len)
       break;
     case (26):
       // The payload is constant 0x1a 0xb 0x24 0xff
-      assert(payloadLen == 4);
+      if (payloadLen != 4)
+        return;
       break;
     case (28):
       // Only seen every 20-30s or so
@@ -162,9 +163,17 @@ void readData(unsigned char messageId, unsigned char *payload, unsigned char len
 
 void readMsg18(unsigned char *payload)
 {
-  uint16_t direction = (uint16_t)(payload[0]) << 8 | (uint16_t)(payload[1]);
-  uint16_t windspeed = (uint16_t)(payload[2]) << 8 | (uint16_t)(payload[3]);
-  Serial.printf("Windspeed: %hhu, %hhu\n", direction, windspeed);
+  if(payload[0]==0x0 && payload[1]==0x0 && payload[2]==0x0 && payload[3] == 0x20) {
+    // No wind, standing still
+    Serial.printf("No wind\n");
+  }
+  uint16_t windspeedBytes = (uint16_t)(payload[1]) << 8 | (uint16_t)(payload[2]);
+  //uint16_t direction = (uint16_t)(payload[2]) << 8 | (uint16_t)(payload[3]);
+  uint8_t directionByte = payload[3];
+  float direction = (float)directionByte * 360./255.;
+  float windspeed = (float)windspeedBytes * 1e-2;
+
+  Serial.printf("Direction[°]: %f, Speed[m/s?]: %f, Unknown: %u\n", direction, windspeed, payload[0]);
 }
 
 void readMsg112(uint8_t* payload)
