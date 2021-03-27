@@ -121,8 +121,8 @@ void readMessage(unsigned char *msg, unsigned char len)
       // last two bytes seem to belong together (two byte number)
       if (payloadLen != 4)
         return;
-      readData(headerPayload, payload, payloadLen);
-      readMsg18(payload);
+      //readData(headerPayload, payload, payloadLen);
+      //readMsg18(payload);
       break;
     case (21):
       // Only the middle two bytes seem to vary.
@@ -142,12 +142,12 @@ void readMessage(unsigned char *msg, unsigned char len)
     case (112):
       // More repititions if there is wind
       // but not related to speed or direction
-      // example: 0x70 0x89 0xcc
+      // example: 0x89 0xcc 0x80
       // First two bytes seem constant.
       // Maybe signal strength?
       assert(payloadLen == 3);
-      //readData(headerPayload, payload, payloadLen);
-      //readMsg112(payload);
+      readData(headerPayload, payload, payloadLen);
+      readMsg112(payload);
       break;
     default:
       Serial.printf("Unkown message with key %d of len=%d\n", headerPayload, payloadLen);
@@ -178,6 +178,10 @@ void readMsg18(unsigned char *payload)
 
 void readMsg112(uint8_t* payload)
 {
-  uint8_t signalStrength = payload[2];
-  Serial.printf("%03hhu\n", signalStrength);
+  uint8_t signalStrengthByte = payload[1];
+  float signalStrength = (float)signalStrengthByte / (float)0xFF * 100.;
+  Serial.printf("Wind Transducer signal strength[%%]: %f\n", signalStrength);
+
+  // payload[2] might be a flag of some sorts?
+  // seen: Mostly 0x80, somtimes: 0xad, 0xf1, 0xcb 0xc6
 }
