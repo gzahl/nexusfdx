@@ -7,7 +7,8 @@ unsigned char reverse(unsigned char);
 void printMessage(unsigned char *msg, unsigned char len);
 void readMessage(unsigned char *msg, unsigned char len);
 void readData(unsigned char messageId, unsigned char *msg, unsigned char len);
-void readMsg18(unsigned char *payload);
+void readMsg18(uint8_t *payload);
+void readMsg21(uint8_t *payload);
 void readMsg112(uint8_t *payload);
 unsigned char calcChksum(unsigned char *msg, unsigned char len);
 unsigned char message[50];
@@ -90,8 +91,15 @@ void readMessage(unsigned char *msg, unsigned char len)
         return;
       break;
     case (1):
+      // With resting wind transducer
+      // the last two bytes keep the last values,
+      // first two ones zero, e.g.
+      // 0x0 0x0 0xde 0x98
+      // Seems similar two Msg18, but keeps last read windspeed and direction
       if (payloadLen != 4)
         return;
+      readData(headerPayload, payload, payloadLen);
+      readMsg18(payload);
       break;
     case (3):
       assert(payloadLen == 1);
@@ -110,27 +118,29 @@ void readMessage(unsigned char *msg, unsigned char len)
       assert(payloadLen == 1);
       break;
     case (17):
-      // Always 0x11 0x00?
+      // Always 0x00s 0x00?
       if (payloadLen != 2)
         return;
       break;
     case (18):
-      // Is correlated to wind speed, e.g.
-      // No wind: 0x12 0x0 0x0 0x0
-      // First byte always 0x12?
-      // last two bytes seem to belong together (two byte number)
+      // Wind direction & speed + unknown byte
       if (payloadLen != 4)
         return;
       //readData(headerPayload, payload, payloadLen);
       //readMsg18(payload);
       break;
     case (21):
-      // Only the middle two bytes seem to vary.
-      // Updates more often if wind sensor is active
+      // Only the first bytes seem to vary.
+      // 0x34 0xef 0xff 0xff
+      // Second byte can be 0xee, 0xef, 0xed, but mostly 0exef
+      // Last two bytes always 0xff 0xff?
+      // Updates more often if wind sensor is active, but value seems to jump around
       assert(payloadLen == 4);
+      //readData(headerPayload, payload, payloadLen);
+      //readMsg21(payload);
       break;
     case (26):
-      // The payload is constant 0x1a 0xb 0x24 0xff
+      // The payload is constant 0xb 0x24 0xff 0x00
       if (payloadLen != 4)
         return;
       break;
@@ -140,14 +150,12 @@ void readMessage(unsigned char *msg, unsigned char len)
       assert(payloadLen == 3);
       break;
     case (112):
+      // Wind Transducer Signal Strength + two unknown bytes
       // More repititions if there is wind
-      // but not related to speed or direction
       // example: 0x89 0xcc 0x80
-      // First two bytes seem constant.
-      // Maybe signal strength?
       assert(payloadLen == 3);
-      readData(headerPayload, payload, payloadLen);
-      readMsg112(payload);
+      //readData(headerPayload, payload, payloadLen);
+      //readMsg112(payload);
       break;
     default:
       Serial.printf("Unkown message with key %d of len=%d\n", headerPayload, payloadLen);
@@ -161,7 +169,7 @@ void readData(unsigned char messageId, unsigned char *payload, unsigned char len
   printMessage(payload, len);
 }
 
-void readMsg18(unsigned char *payload)
+void readMsg18(uint8_t *payload)
 {
   if(payload[0]==0x0 && payload[1]==0x0 && payload[2]==0x0 && payload[3] == 0x20) {
     // No wind, standing still
@@ -184,4 +192,9 @@ void readMsg112(uint8_t* payload)
 
   // payload[2] might be a flag of some sorts?
   // seen: Mostly 0x80, somtimes: 0xad, 0xf1, 0xcb 0xc6
+}
+
+void readMsg21(uint8_t *payload) {
+  uint8_t unknownByte = payload[0];
+  Serial.printf("Unknown: %u\n", unknownByte);
 }
