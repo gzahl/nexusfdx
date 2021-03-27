@@ -4,19 +4,33 @@ meta:
   bit-endian: le
   
 seq:
+  - id: magic
+    contents:
+      - 0x00
   - id: fdx
     type: package
     #terminator: 0x41
     #consume: false
-    repeat: eos
-    eos-error: false
+    #repeat: eos
+    #eos-error: false
+    repeat: expr
+    repeat-expr: 100
 
+enums:
+  bytetype:
+    0: data
+    1: header
+    
 types:
   package:
     seq:
-      - id: type
-        type: b8
-        enum: bytetype
+      - id: abyte
+        type: dualbyte
+        repeat: until
+        repeat-until: _.type == bytetype::header
+        
+  dualbyte:
+    seq:
       - id: payload
         size: 1
         type:
@@ -24,6 +38,9 @@ types:
           cases:
             'bytetype::header': unknown
             'bytetype::data': unknown
+      - id: type
+        type: b8
+        enum: bytetype
       
         
       #- id: packagebit
@@ -36,9 +53,6 @@ types:
       #    cases:
       #      _: unknown
     enums:
-      bytetype:
-        0: data
-        1: sender
       datatype:
         0x41: package41
         
