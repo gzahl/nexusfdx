@@ -44,11 +44,11 @@ unsigned char reverse(unsigned char b)
   return b;
 }
 
-void printMessage(unsigned char *msg, unsigned char len)
+void printMessage(unsigned char *msg, unsigned char msglen)
 {
-  for (unsigned char i = 0; i < len; i++)
+  for (unsigned char i = 0; i < msglen; i++)
   {
-    Serial.printf("0x%x ", message[i]);
+    Serial.printf("0x%x ", msg[i]);
   }
   Serial.printf("\n");
 }
@@ -82,7 +82,7 @@ void readMessage(unsigned char *msg, unsigned char len)
       return;
     //assert(correctChksum);
     unsigned char payloadLen = len - 2;
-    unsigned char* payload = msg + 1;
+    unsigned char *payload = msg + 1;
     switch (headerPayload)
     {
     case (0):
@@ -121,8 +121,8 @@ void readMessage(unsigned char *msg, unsigned char len)
       // last two bytes seem to belong together (two byte number)
       if (payloadLen != 4)
         return;
-      //readData(headerPayload, payload, payloadLen);
-      //readMsg18(payload);
+      readData(headerPayload, payload, payloadLen);
+      readMsg18(payload);
       break;
     case (21):
       // Only the middle two bytes seem to vary.
@@ -145,8 +145,8 @@ void readMessage(unsigned char *msg, unsigned char len)
       // First two bytes seem constant.
       // Maybe signal strength?
       assert(payloadLen == 3);
-      readData(headerPayload, payload, payloadLen);
-      readMsg112(payload);
+      //readData(headerPayload, payload, payloadLen);
+      //readMsg112(payload);
       break;
     default:
       Serial.printf("Unkown message with key %d of len=%d\n", headerPayload, payloadLen);
@@ -162,9 +162,9 @@ void readData(unsigned char messageId, unsigned char *payload, unsigned char len
 
 void readMsg18(unsigned char *payload)
 {
-  uint16_t direction = payload[1] | (uint16_t)payload[0] << 8;
-  uint16_t windspeed = payload[3] | (uint16_t)payload[2] << 8;
-  //Serial.printf("Windspeed: %u, %u\n", direction, windspeed);
+  uint16_t direction = (uint16_t)(payload[0]) << 8 | (uint16_t)(payload[1]);
+  uint16_t windspeed = (uint16_t)(payload[2]) << 8 | (uint16_t)(payload[3]);
+  Serial.printf("Windspeed: %hhu, %hhu\n", direction, windspeed);
 }
 
 void readMsg112(uint8_t* payload)
