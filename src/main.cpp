@@ -17,8 +17,13 @@ unsigned char len = 0;
 void setup()
 {
   Serial.begin(115200);
-  swSerial.begin(9600, SWSERIAL_8S1, GPIO_NUM_21);
+  //swSerial.begin(9600, SWSERIAL_8S1, GPIO_NUM_21);
+  //pinMode(GPIO_NUM_26, INPUT);
+  //pinMode(GPIO_NUM_18, OUTPUT);
+
+  swSerial.begin(9600, SWSERIAL_8S1, GPIO_NUM_26, GPIO_NUM_18);
   // put your setup code here, to run once:
+  Serial.printf("Hello, starting now..\n");
 }
 
 void loop()
@@ -27,6 +32,7 @@ void loop()
   while (swSerial.available())
   {
     byte = swSerial.read();
+    //Serial.printf("0x%x", byte);
     if (swSerial.readParity() && len > 0)
     {
       //printMessage(message, len);
@@ -78,12 +84,22 @@ void readMessage(unsigned char *msg, unsigned char len)
   }
   else
   {
-    bool correctChksum = message[len - 1] == calcChksum(msg, len);
-    if (!correctChksum)
+    // At least one header byte and one checksum byte
+    if(len<2) {
+      //printf("Data message too short (len=%u): ",len);
+      //readData(headerPayload, msg, len);
       return;
-    //assert(correctChksum);
+    }
+      
     unsigned char payloadLen = len - 2;
     unsigned char *payload = msg + 1;
+
+    bool correctChksum = message[len - 1] == calcChksum(msg, len);
+    if (!correctChksum) {
+      //printf("Wrong chksum: ");
+      //readData(headerPayload, payload, payloadLen);
+      return;
+    }
     switch (headerPayload)
     {
     case (0):
@@ -98,7 +114,7 @@ void readMessage(unsigned char *msg, unsigned char len)
       // Seems similar two Msg18, but keeps last read windspeed and direction
       if (payloadLen != 4)
         return;
-      readData(headerPayload, payload, payloadLen);
+      //readData(headerPayload, payload, payloadLen);
       readMsg18(payload);
       break;
     case (3):
@@ -127,7 +143,7 @@ void readMessage(unsigned char *msg, unsigned char len)
       if (payloadLen != 4)
         return;
       //readData(headerPayload, payload, payloadLen);
-      //readMsg18(payload);
+      readMsg18(payload);
       break;
     case (21):
       // Only the first bytes seem to vary.
@@ -137,7 +153,7 @@ void readMessage(unsigned char *msg, unsigned char len)
       // Updates more often if wind sensor is active, but value seems to jump around
       assert(payloadLen == 4);
       //readData(headerPayload, payload, payloadLen);
-      //readMsg21(payload);
+      readMsg21(payload);
       break;
     case (26):
       // The payload is constant 0xb 0x24 0xff 0x00
@@ -155,10 +171,10 @@ void readMessage(unsigned char *msg, unsigned char len)
       // example: 0x89 0xcc 0x80
       assert(payloadLen == 3);
       //readData(headerPayload, payload, payloadLen);
-      //readMsg112(payload);
+      readMsg112(payload);
       break;
     default:
-      Serial.printf("Unkown message with key %d of len=%d\n", headerPayload, payloadLen);
+      Serial.printf("Unknown message with key %u of len=%u\n", headerPayload, payloadLen);
     }
   }
 }
