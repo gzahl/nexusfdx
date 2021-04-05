@@ -11,6 +11,7 @@ SoftwareSerial swSerialNmea1;
 //unsigned char gpsmessage[100];
 unsigned char gpsmessagelen = 0;
 std::vector<uint8_t> gpsmsg(100);
+std::vector<uint8_t> aismsg(100);
 unsigned char len = 0;
 
 static const bool ENABLE_NMEA2 = false;
@@ -27,6 +28,9 @@ void setup()
   // Use HardwareSerial2 for GPS, since Baudrate of 115200 is problamatic with
   // SoftwareSerial and setting the baudrate is not working
   Serial2.begin(115200, SERIAL_8N1, GPIO_NUM_23, GPIO_NUM_19);
+
+  aismsg.clear();
+  gpsmsg.clear();
   
 
   //pinMode(GPIO_NUM_19, PULLUP);
@@ -37,6 +41,7 @@ void setup()
   Serial2.print("$PUBX,41,1,3,2,4800,0*16\r\n");
   Serial2.flush();
   delay(100);
+  Serial2.clearWriteError();
   Serial2.end();
   delay(100);
   //Serial2.begin(4800, SERIAL_8N1, GPIO_NUM_23, GPIO_NUM_19);
@@ -53,6 +58,18 @@ void setup()
   swSerialNmea1.begin(38400, SWSERIAL_8N1, GPIO_NUM_5, GPIO_NUM_13);
 
 }
+
+bool readNmea(std::vector<uint8_t> &buffer, uint8_t byte) {
+    if(byte == '$') {
+      buffer.clear();
+    }
+    buffer.push_back(byte);
+    if(byte == '\n') {
+      return true;
+    }
+    return false;
+}
+
 
 void loop()
 {
@@ -71,41 +88,20 @@ void loop()
   }
 
   while(ENABLE_GPS && swSerialGps.available()) {
-    byte = swSerialGps.read();
-    if(byte == '$') {
-      gpsmsg.clear();
-    }
-    gpsmsg.push_back(byte);
-    if(byte == '\n') {
-      for( auto c : gpsmsg ){
-      Serial.write(c);
-      swSerialNmea1.write(c);
+    if(readNmea(gpsmsg, swSerialGps.read())) {
+      for(auto c : gpsmsg){
+        Serial.write(c);
+        swSerialNmea1.write(c);
       }
     }
-
-    /*
-    if(byte == '$') {
-      gpsmessage[0] = byte;
-      gpsmessagelen = 1;
-    } else if (gpsmessagelen >= 10) {
-      for(unsigned char i=0; 0<gpsmessagelen; i++) {
-        Serial.write(gpsmessage[i]);
-      }
-    } else if(gpsmessagelen > 0 && gpsmessagelen < 10) {
-      gpsmessage[gpsmessagelen++] = byte;
-    }*/
-    //if(isPrintable(byte)) {
-    //Serial.write(byte);
-    //swSerialNmea1.write(byte);
-    /*} else {
-      Serial.write(".");
-    }*/
   }
 
   while(ENABLE_NMEA0 && swSerialNmea0.available()) {
-  //  while(swSerialNmea0.available()){
-    byte = swSerialNmea0.read();
-    Serial.write(byte);
+    if(readNmea(aismsg, swSerialNmea0.read())) {
+      for(auto c : aismsg) {
+        Serial.write(c);
+      }
+    }
   }
 
     while(ENABLE_NMEA1 && swSerialNmea1.available()) {
