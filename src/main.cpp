@@ -1,12 +1,15 @@
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 #include <fdx.h>
+#include <WiFi.h>
+#include <AsyncUDP.h>
 
 SoftwareSerial swSerial;
 SoftwareSerial swSerialGps;
 SoftwareSerial swSerialNmea0;
 SoftwareSerial swSerialNmea1;
 
+void configureUbloxM8Gps();
 
 //unsigned char gpsmessage[100];
 unsigned char gpsmessagelen = 0;
@@ -20,33 +23,32 @@ static const bool ENABLE_NMEA0 = true; // AIS Input
 static const bool ENABLE_NMEA1 = true; // DSC Input, GPS Output
 
 
+const char * ssid = "Schmuddelwetter";
+const char * password = "9568164986244857";
+
+AsyncUDP udp;
+
 void setup()
 {
   Serial.begin(115200);
   Serial.printf("\nHello, starting now..\n");
-
-  // Use HardwareSerial2 for GPS, since Baudrate of 115200 is problamatic with
-  // SoftwareSerial and setting the baudrate is not working
-  Serial2.begin(115200, SERIAL_8N1, GPIO_NUM_23, GPIO_NUM_19);
+  
+  configureUbloxM8Gps();
 
   aismsg.clear();
   gpsmsg.clear();
-  
+   
+  Serial.printf("Connecting to Wifi with ssid '%s'.\n", ssid);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+      if (WiFi.waitForConnectResult() != WL_CONNECTED) {
+        Serial.println("WiFi Failed");
+        while(1) {
+            delay(1000);
+        }
+    }
 
-  //pinMode(GPIO_NUM_19, PULLUP);
-  delay(1000);
-  //Serial2.print("$PUBX,41,1,3,2,115200,0*1D\r\n");
-  //Serial2.print("$PUBX,41,1,3,2,38400,0*25\r\n");
-  //Serial2.print("$PUBX,41,1,3,2,9600,0*15\r\n");
-  Serial2.print("$PUBX,41,1,3,2,4800,0*16\r\n");
-  Serial2.flush();
-  delay(100);
-  Serial2.clearWriteError();
-  Serial2.end();
-  delay(100);
-  //Serial2.begin(4800, SERIAL_8N1, GPIO_NUM_23, GPIO_NUM_19);
 
-  
 
   //swSerial.begin(9600, SWSERIAL_8S1, GPIO_NUM_21);
   //pinMode(GPIO_NUM_26, INPUT);
@@ -59,15 +61,38 @@ void setup()
 
 }
 
+void configureUbloxM8Gps() {
+  // Use HardwareSerial2 to configure GPS, since Baudrate of 115200 is problamatic with
+  // SoftwareSerial and setting the baudrate is not working
+  Serial2.begin(115200, SERIAL_8N1, GPIO_NUM_23, GPIO_NUM_19);
+  //pinMode(GPIO_NUM_19, PULLUP);
+  delay(1000);
+  //Serial2.print("$PUBX,41,1,3,2,115200,0*1D\r\n");
+  //Serial2.print("$PUBX,41,1,3,2,38400,0*25\r\n");
+  //Serial2.print("$PUBX,41,1,3,2,9600,0*15\r\n");
+  Serial2.print("$PUBX,41,1,3,2,4800,0*16\r\n");
+  Serial2.flush();
+  delay(100);
+  Serial2.clearWriteError();
+  Serial2.end();
+  delay(100);
+}
+
+
 bool readNmea(std::vector<uint8_t> &buffer, uint8_t byte) {
     if(byte == '$') {
       buffer.clear();
     }
     buffer.push_back(byte);
     if(byte == '\n') {
+      buffer.push_back('\0');
       return true;
     }
     return false;
+}
+
+char* getLine(std::vector<uint8_t> buffer) {
+  return reinterpret_cast<char*>(buffer.data());
 }
 
 
@@ -89,18 +114,16 @@ void loop()
 
   while(ENABLE_GPS && swSerialGps.available()) {
     if(readNmea(gpsmsg, swSerialGps.read())) {
-      for(auto c : gpsmsg){
-        Serial.write(c);
-        swSerialNmea1.write(c);
-      }
+      Serial.print(getLine(gpsmsg));
+      swSerialNmea1.print(getLine(gpsmsg));
+      udp.broadcastTo(getLine(gpsmsg), 2000);
     }
   }
 
   while(ENABLE_NMEA0 && swSerialNmea0.available()) {
     if(readNmea(aismsg, swSerialNmea0.read())) {
-      for(auto c : aismsg) {
-        Serial.write(c);
-      }
+      Serial.print(getLine(aismsg));
+      udp.broadcastTo(getLine(aismsg), 2000);
     }
   }
 
