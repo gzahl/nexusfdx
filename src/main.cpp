@@ -22,7 +22,7 @@ unsigned char len = 0;
 static const bool ENABLE_NMEA2 = false;
 static const bool ENABLE_GPS = true;
 static const bool ENABLE_NMEA0 = true; // AIS Input
-static const bool ENABLE_NMEA1 = false; // DSC Input, GPS Output
+static const bool ENABLE_NMEA1 = true; // DSC Input, GPS Output
 
 
 void setup()
@@ -35,6 +35,7 @@ void setup()
   Serial2.begin(115200, SERIAL_8N1, GPIO_NUM_23, GPIO_NUM_19);
   
 
+  //pinMode(GPIO_NUM_19, PULLUP);
   delay(100);
   //Serial2.print("$PUBX,41,1,3,2,115200,0*1D\r\n");
   //Serial2.print("$PUBX,41,1,3,2,38400,0*25\r\n");
@@ -90,6 +91,7 @@ void loop()
     }*/
     //if(isPrintable(byte)) {
     Serial.write(byte);
+    swSerialNmea1.write(byte);
     /*} else {
       Serial.write(".");
     }*/
