@@ -16,14 +16,14 @@ std::vector<uint8_t> aismsg(100);
 std::vector<uint8_t> dscmsg(100);
 unsigned char len = 0;
 
-static const bool ENABLE_NMEA2 = false;
-static const bool ENABLE_GPS = true;
-static const bool ENABLE_NMEA0 = true; // AIS Input
-static const bool ENABLE_NMEA1 = true; // DSC Input, GPS Output
+static const bool ENABLE_NMEA2 = true;
+static const bool ENABLE_GPS = false;
+static const bool ENABLE_NMEA0 = false; // AIS Input
+static const bool ENABLE_NMEA1 = false; // DSC Input, GPS Output
+static const bool ENABLE_WIFI = false;
 
-
-const char* ssid = "Schmuddelwetter_24G";
-const char* password = "9568164986244857";
+const char *ssid = "Schmuddelwetter_24G";
+const char *password = "9568164986244857";
 
 AsyncUDP udp;
 
@@ -31,26 +31,31 @@ void setup()
 {
   Serial.begin(115200);
   Serial.printf("\nHello, starting now..\n");
-  
+
   configureUbloxM8Gps();
 
   aismsg.clear();
   gpsmsg.clear();
   dscmsg.clear();
-   
-  Serial.printf("Connecting to Wifi with ssid '%s'.\n", ssid);
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
-      if (WiFi.waitForConnectResult() != WL_CONNECTED) {
-        Serial.println("WiFi Failed");
-        while(1) {
-            delay(1000);
-        }
-    } else {
+
+  if (ENABLE_WIFI)
+  {
+    Serial.printf("Connecting to Wifi with ssid '%s'.\n", ssid);
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(ssid, password);
+    if (WiFi.waitForConnectResult() != WL_CONNECTED)
+    {
+      Serial.println("WiFi Failed");
+      while (1)
+      {
+        delay(1000);
+      }
+    }
+    else
+    {
       Serial.println("WiFi connected.");
     }
-
-
+  }
 
   //swSerial.begin(9600, SWSERIAL_8S1, GPIO_NUM_21);
   //pinMode(GPIO_NUM_26, INPUT);
@@ -60,10 +65,10 @@ void setup()
   swSerialGps.begin(9600, SWSERIAL_8N1, GPIO_NUM_23, GPIO_NUM_19);
   swSerialNmea0.begin(38400, SWSERIAL_8N1, GPIO_NUM_33, GPIO_NUM_14);
   swSerialNmea1.begin(38400, SWSERIAL_8N1, GPIO_NUM_5, GPIO_NUM_13);
-
 }
 
-void configureUbloxM8Gps() {
+void configureUbloxM8Gps()
+{
   // Use HardwareSerial2 to configure GPS, since Baudrate of 115200 is problamatic with
   // SoftwareSerial and setting the baudrate is not working
   Serial2.begin(115200, SERIAL_8N1, GPIO_NUM_23, GPIO_NUM_19);
@@ -80,23 +85,25 @@ void configureUbloxM8Gps() {
   delay(100);
 }
 
-
-bool readNmea(std::vector<uint8_t> &buffer, uint8_t byte) {
-    if(byte == '$') {
-      buffer.clear();
-    }
-    buffer.push_back(byte);
-    if(byte == '\n') {
-      buffer.push_back('\0');
-      return true;
-    }
-    return false;
+bool readNmea(std::vector<uint8_t> &buffer, uint8_t byte)
+{
+  if (byte == '$')
+  {
+    buffer.clear();
+  }
+  buffer.push_back(byte);
+  if (byte == '\n')
+  {
+    buffer.push_back('\0');
+    return true;
+  }
+  return false;
 }
 
-char* getLine(std::vector<uint8_t> buffer) {
-  return reinterpret_cast<char*>(buffer.data());
+char *getLine(std::vector<uint8_t> buffer)
+{
+  return reinterpret_cast<char *>(buffer.data());
 }
-
 
 void loop()
 {
@@ -114,25 +121,34 @@ void loop()
     message[len++] = reverse(byte);
   }
 
-  while(ENABLE_GPS && swSerialGps.available()) {
-    if(readNmea(gpsmsg, swSerialGps.read())) {
+  while (ENABLE_GPS && swSerialGps.available())
+  {
+    if (readNmea(gpsmsg, swSerialGps.read()))
+    {
       Serial.print(getLine(gpsmsg));
       swSerialNmea1.print(getLine(gpsmsg));
-      udp.broadcastTo(getLine(gpsmsg), 2000);
+      if (ENABLE_WIFI)
+      {
+        udp.broadcastTo(getLine(gpsmsg), 2000);
+      }
     }
   }
 
-  while(ENABLE_NMEA0 && swSerialNmea0.available()) {
-    if(readNmea(aismsg, swSerialNmea0.read())) {
+  while (ENABLE_NMEA0 && swSerialNmea0.available())
+  {
+    if (readNmea(aismsg, swSerialNmea0.read()))
+    {
       Serial.print(getLine(aismsg));
       udp.broadcastTo(getLine(aismsg), 2000);
     }
   }
 
-    while(ENABLE_NMEA1 && swSerialNmea1.available()) {
-      if(readNmea(dscmsg, swSerialNmea1.read())) {
-        Serial.print(getLine(dscmsg));
-        udp.broadcastTo(getLine(dscmsg), 2000);
+  while (ENABLE_NMEA1 && swSerialNmea1.available())
+  {
+    if (readNmea(dscmsg, swSerialNmea1.read()))
+    {
+      Serial.print(getLine(dscmsg));
+      udp.broadcastTo(getLine(dscmsg), 2000);
     }
   }
 }

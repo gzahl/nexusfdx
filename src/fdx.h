@@ -2,6 +2,7 @@
 #define __FDX_h__
 
 #include <Arduino.h>
+#include "MovingAverage.h"
 
 unsigned char reverse(unsigned char);
 void printMessage(unsigned char *msg, unsigned char len);
@@ -13,6 +14,8 @@ void readMsg112(uint8_t *payload);
 unsigned char calcChksum(unsigned char *msg, unsigned char len);
 
 unsigned char message[50];
+
+MovingAverage <float>vavg(5,0.0);
 
 
 unsigned char reverse(unsigned char b)
@@ -52,7 +55,7 @@ void readMessage(unsigned char *msg, unsigned char len)
   {
     if (len != 1)
       return;
-    if (headerPayload != 2 && headerPayload != 127)
+    if (headerPayload != 2 && headerPayload != 127 && headerPayload != 16)
       printf("New Sender with address: %d\n", headerPayload);
   }
   else
@@ -168,7 +171,8 @@ void readMsg18(uint8_t *payload)
   //uint16_t direction = (uint16_t)(payload[2]) << 8 | (uint16_t)(payload[3]);
   uint8_t directionByte = payload[3];
   float direction = (float)directionByte * 360./255.;
-  float windspeed = (float)windspeedBytes * 1e-2;
+  vavg.Insert((float)windspeedBytes);
+  float windspeed = vavg.GetAverage() * 1.e-2 * 1.94;
 
   Serial.printf("Direction[°]: %f, Speed[m/s?]: %f, Unknown: %u\n", direction, windspeed, payload[0]);
 }
