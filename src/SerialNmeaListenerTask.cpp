@@ -2,18 +2,9 @@
 
 SerialNmeaListenerTask::SerialNmeaListenerTask(
     uint32_t baud, SoftwareSerialConfig config, int8_t rxPin, int8_t txPin,
-    std::function<void(std::vector<uint8_t> &)> sentenceCallback_) {
+    std::function<void(std::vector<uint8_t> &)> sentenceCallback_)
+    : SerialListenerTask(baud, config, rxPin, txPin, sentenceCallback_) {
   msg.reserve(80);
-  swSerial.begin(baud, config, rxPin, txPin);
-  sentenceCallback = sentenceCallback_;
-  xTaskCreate(SerialNmeaListenerTask::TaskStart, "NAME", 2048, this,
-              tskNO_AFFINITY, moduleLoopTaskHandle);
-}
-
-void SerialNmeaListenerTask::TaskStart(void *taskStartParameters) {
-  SerialNmeaListenerTask *moduleObject =
-      static_cast<SerialNmeaListenerTask *>(taskStartParameters);
-  moduleObject->TaskLoop();
 }
 
 void SerialNmeaListenerTask::TaskLoop() {

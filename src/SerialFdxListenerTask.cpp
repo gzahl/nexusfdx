@@ -1,83 +1,80 @@
-#ifndef __FDX_h__
-#define __FDX_h__
+#include "SerialFdxListenerTask.h"
 
-#include <Arduino.h>
-#include "MovingAverage.h"
+SerialFdxListenerTask::SerialFdxListenerTask(
+    uint32_t baud, SoftwareSerialConfig config, int8_t rxPin, int8_t txPin,
+    std::function<void(std::vector<uint8_t> &)> sentenceCallback_)
+    : SerialListenerTask(baud, config, rxPin, txPin, sentenceCallback_) {
+  len = 0;
+}
 
-unsigned char reverse(unsigned char);
-void printMessage(unsigned char *msg, unsigned char len);
-void readMessage(unsigned char *msg, unsigned char len);
-void readData(unsigned char messageId, unsigned char *msg, unsigned char len);
-void readMsg18(uint8_t *payload);
-void readMsg21(uint8_t *payload);
-void readMsg112(uint8_t *payload);
-unsigned char calcChksum(unsigned char *msg, unsigned char len);
+void SerialFdxListenerTask::TaskLoop() {
+  while (true) {
+    if (swSerial.available()) {
+      byte = swSerial.read();
+      // Serial.printf("0x%x", byte);s
+      if (swSerial.readParity() && len > 0) {
+        // printMessage(message, len);
+        readMessage(message, len);
+        len = 0;
+      }
+      message[len++] = reverse(byte);
+    }
+  }
 
-unsigned char message[50];
+  vTaskDelete(NULL);
+}
 
-MovingAverage <float>vavg(5,0.0);
-
-
-unsigned char reverse(unsigned char b)
-{
+unsigned char SerialFdxListenerTask::reverse(unsigned char b) {
   b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
   b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
   b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
   return b;
 }
 
-void printMessage(unsigned char *msg, unsigned char msglen)
-{
-  for (unsigned char i = 0; i < msglen; i++)
-  {
+void SerialFdxListenerTask::printMessage(unsigned char *msg,
+                                         unsigned char msglen) {
+  for (unsigned char i = 0; i < msglen; i++) {
     Serial.printf("0x%x ", msg[i]);
   }
   Serial.printf("\n");
 }
 
-
-unsigned char calcChksum(unsigned char *msg, unsigned char len)
-{
+unsigned char SerialFdxListenerTask::calcChksum(unsigned char *msg,
+                                                unsigned char len) {
   unsigned char chksum = message[0];
-  for (unsigned char i = 1; i < len - 1; i++)
-  {
+  for (unsigned char i = 1; i < len - 1; i++) {
     chksum = chksum ^ message[i];
   }
   return chksum;
 }
 
-void readMessage(unsigned char *msg, unsigned char len)
-{
+void SerialFdxListenerTask::readMessage(unsigned char *msg, unsigned char len) {
   assert(len > 0);
   bool isSender = (msg[0] >> 7) == 1;
   unsigned char headerPayload = msg[0] & 0b01111111;
-  if (isSender)
-  {
+  if (isSender) {
     if (len != 1)
       return;
     if (headerPayload != 2 && headerPayload != 127 && headerPayload != 16)
       printf("New Sender with address: %d\n", headerPayload);
-  }
-  else
-  {
+  } else {
     // At least one header byte and one checksum byte
-    if(len<2) {
-      //printf("Data message too short (len=%u): ",len);
-      //readData(headerPayload, msg, len);
+    if (len < 2) {
+      // printf("Data message too short (len=%u): ",len);
+      // readData(headerPayload, msg, len);
       return;
     }
-      
+
     unsigned char payloadLen = len - 2;
     unsigned char *payload = msg + 1;
 
     bool correctChksum = message[len - 1] == calcChksum(msg, len);
     if (!correctChksum) {
-      //printf("Wrong chksum: ");
-      //readData(headerPayload, payload, payloadLen);
+      // printf("Wrong chksum: ");
+      // readData(headerPayload, payload, payloadLen);
       return;
     }
-    switch (headerPayload)
-    {
+    switch (headerPayload) {
     case (0):
       if (payloadLen != 2)
         return;
@@ -90,7 +87,7 @@ void readMessage(unsigned char *msg, unsigned char len)
       // Seems similar two Msg18, but keeps last read windspeed and direction
       if (payloadLen != 4)
         return;
-      //readData(headerPayload, payload, payloadLen);
+      // readData(headerPayload, payload, payloadLen);
       readMsg18(payload);
       break;
     case (3):
@@ -118,7 +115,7 @@ void readMessage(unsigned char *msg, unsigned char len)
       // Wind direction & speed + unknown byte
       if (payloadLen != 4)
         return;
-      //readData(headerPayload, payload, payloadLen);
+      // readData(headerPayload, payload, payloadLen);
       readMsg18(payload);
       break;
     case (21):
@@ -126,9 +123,10 @@ void readMessage(unsigned char *msg, unsigned char len)
       // 0x34 0xef 0xff 0xff
       // Second byte can be 0xee, 0xef, 0xed, but mostly 0exef
       // Last two bytes always 0xff 0xff?
-      // Updates more often if wind sensor is active, but value seems to jump around
+      // Updates more often if wind sensor is active, but value seems to jump
+      // around
       assert(payloadLen == 4);
-      //readData(headerPayload, payload, payloadLen);
+      // readData(headerPayload, payload, payloadLen);
       readMsg21(payload);
       break;
     case (26):
@@ -146,39 +144,43 @@ void readMessage(unsigned char *msg, unsigned char len)
       // More repititions if there is wind
       // example: 0x89 0xcc 0x80
       assert(payloadLen == 3);
-      //readData(headerPayload, payload, payloadLen);
+      // readData(headerPayload, payload, payloadLen);
       readMsg112(payload);
       break;
     default:
-      Serial.printf("Unknown message with key %u of len=%u\n", headerPayload, payloadLen);
+      Serial.printf("Unknown message with key %u of len=%u\n", headerPayload,
+                    payloadLen);
     }
   }
 }
 
-void readData(unsigned char messageId, unsigned char *payload, unsigned char len)
-{
+void SerialFdxListenerTask::readData(unsigned char messageId,
+                                     unsigned char *payload,
+                                     unsigned char len) {
   Serial.printf("[%d] ", messageId);
   printMessage(payload, len);
 }
 
-void readMsg18(uint8_t *payload)
-{
-  if(payload[0]==0x0 && payload[1]==0x0 && payload[2]==0x0 && payload[3] == 0x20) {
+void SerialFdxListenerTask::readMsg18(uint8_t *payload) {
+  if (payload[0] == 0x0 && payload[1] == 0x0 && payload[2] == 0x0 &&
+      payload[3] == 0x20) {
     // No wind, standing still
     Serial.printf("No wind\n");
   }
-  uint16_t windspeedBytes = (uint16_t)(payload[1]) << 8 | (uint16_t)(payload[2]);
-  //uint16_t direction = (uint16_t)(payload[2]) << 8 | (uint16_t)(payload[3]);
+  uint16_t windspeedBytes =
+      (uint16_t)(payload[1]) << 8 | (uint16_t)(payload[2]);
+  // uint16_t direction = (uint16_t)(payload[2]) << 8 | (uint16_t)(payload[3]);
   uint8_t directionByte = payload[3];
-  float direction = (float)directionByte * 360./255.;
-  vavg.Insert((float)windspeedBytes);
-  float windspeed = vavg.GetAverage() * 1.e-2 * 1.94;
+  float direction = (float)directionByte * 360. / 255.;
+  // vavg.Insert((float)windspeedBytes);
+  // float windspeed = vavg.GetAverage() * 1.e-2 * 1.94;
+  float windspeed = (float)windspeedBytes * 1.e-2 * 1.94;
 
-  Serial.printf("Direction[°]: %f, Speed[m/s?]: %f, Unknown: %u\n", direction, windspeed, payload[0]);
+  Serial.printf("Direction[°]: %f, Speed[m/s?]: %f, Unknown: %u\n", direction,
+                windspeed, payload[0]);
 }
 
-void readMsg112(uint8_t* payload)
-{
+void SerialFdxListenerTask::readMsg112(uint8_t *payload) {
   uint8_t signalStrengthByte = payload[1];
   float signalStrength = (float)signalStrengthByte / (float)0xFF * 100.;
   Serial.printf("Wind Transducer signal strength[%%]: %f\n", signalStrength);
@@ -187,8 +189,7 @@ void readMsg112(uint8_t* payload)
   // seen: Mostly 0x80, somtimes: 0xad, 0xf1, 0xcb 0xc6
 }
 
-void readMsg21(uint8_t *payload) {
+void SerialFdxListenerTask::readMsg21(uint8_t *payload) {
   uint8_t unknownByte = payload[0];
   Serial.printf("Unknown: %u\n", unknownByte);
 }
-#endif
