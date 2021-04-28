@@ -20,7 +20,7 @@ void SerialNmeaListenerTask::TaskLoop() {
       if (readNmea(swSerial.read()))
         sentenceCallback(msg);
     }
-    vTaskDelay(10 / portTICK_PERIOD_MS);
+    vTaskDelay(pdMS_TO_TICKS(10));
   }
   vTaskDelete(NULL);
 }

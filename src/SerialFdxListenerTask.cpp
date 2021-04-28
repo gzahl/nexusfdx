@@ -26,7 +26,7 @@ void SerialFdxListenerTask::TaskLoop() {
       }
       message[len++] = reverse(byte);
     }
-    vTaskDelay(10 / portTICK_PERIOD_MS);
+    vTaskDelay(pdMS_TO_TICKS(10));
   }
 
   vTaskDelete(NULL);
