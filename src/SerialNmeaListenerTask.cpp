@@ -17,8 +17,9 @@ void SerialNmeaListenerTask::TaskStart(void *thisPointer) {
 void SerialNmeaListenerTask::TaskLoop() {
   while (true) {
     while (swSerial->available()) {
-      if (readNmea(swSerial->read()))
+      if (readNmea(swSerial->read())) {
         sentenceCallback(msg);
+      }
     }
     vTaskDelay(pdMS_TO_TICKS(10));
   }
@@ -26,7 +27,7 @@ void SerialNmeaListenerTask::TaskLoop() {
 }
 
 bool SerialNmeaListenerTask::readNmea(uint8_t byte) {
-  if (byte == '$') {
+  if (byte == '$' || msg.size() > 80) {
     msg.clear();
   }
   msg.push_back(byte);

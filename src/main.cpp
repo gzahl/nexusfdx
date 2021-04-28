@@ -9,11 +9,11 @@
 void configureUbloxM8Gps();
 static char *getLine(std::vector<uint8_t> buffer);
 
-static const bool ENABLE_GPS = true;
-static const bool ENABLE_NMEA0 = true;    // Radio: AIS Input
-static const bool ENABLE_NMEA1 = true;    // Radio: DSC Input, GPS Output
-static const bool ENABLE_NMEA2 = false;    // Nexus FDX
-static const bool ENABLE_ELITE4HDI = false; // GPS Input, AIS Output
+static const bool ENABLE_GPS = false;
+static const bool ENABLE_NMEA0 = false;      // Radio: AIS Input
+static const bool ENABLE_NMEA1 = false;      // Radio: DSC Input, GPS Output
+static const bool ENABLE_NMEA2 = false;     // Nexus FDX
+static const bool ENABLE_ELITE4HDI = true; // GPS Input, AIS Output
 static const bool ENABLE_WIFI = false;
 
 const char *ssid = "Schmuddelwetter_24G";
@@ -40,7 +40,6 @@ static const gpio_num_t GPS_TX = GPIO_NUM_19;
 AsyncUDP udp;
 
 SoftwareSerial *swSerial[8];
-SerialListenerTask *SerialTask[8];
 
 void setup() {
   Serial.begin(115200);
@@ -74,7 +73,7 @@ void setup() {
   if (ENABLE_NMEA0) {
     swSerial[0] = new SoftwareSerial();
     swSerial[0]->begin(38400, SWSERIAL_8N1, NMEA0_RX, NMEA0_TX);
-    SerialTask[0] = new SerialNmeaListenerTask(
+    new SerialNmeaListenerTask(
         "NMEA0_AIS", swSerial[0], [](std::vector<uint8_t> &msg) {
           Serial.print(getLine(msg));
           if (swSerial[4])
@@ -88,7 +87,7 @@ void setup() {
   if (ENABLE_NMEA1) {
     swSerial[1] = new SoftwareSerial();
     swSerial[1]->begin(38400, SWSERIAL_8N1, NMEA1_RX, NMEA1_TX);
-    SerialTask[1] = new SerialNmeaListenerTask(
+    new SerialNmeaListenerTask(
         "NMEA1_DSCGPS", swSerial[1], [](std::vector<uint8_t> &msg) {
           Serial.print(getLine(msg));
           if (ENABLE_WIFI)
@@ -100,14 +99,14 @@ void setup() {
   if (ENABLE_NMEA2) {
     swSerial[2] = new SoftwareSerial();
     swSerial[2]->begin(9600, SWSERIAL_8S1, NMEA2_RX, NMEA2_TX);
-    SerialTask[2] = new SerialFdxListenerTask("NMEA2_NexusFDX", swSerial[2],
-                                              [](std::vector<uint8_t> &msg) {});
+    new SerialFdxListenerTask("NMEA2_NexusFDX", swSerial[2],
+                              [](std::vector<uint8_t> &msg) {});
   }
 
   if (ENABLE_ELITE4HDI) {
     swSerial[3] = new SoftwareSerial();
     swSerial[3]->begin(38400, SWSERIAL_8N1, NMEA3_RX, NMEA3_TX);
-    SerialTask[3] = new SerialNmeaListenerTask(
+    new SerialNmeaListenerTask(
         "NMEA3_ELITE4HDI_RX", swSerial[3], [](std::vector<uint8_t> &msg) {
           Serial.print(getLine(msg));
           if (swSerial[1])
@@ -121,7 +120,7 @@ void setup() {
     configureUbloxM8Gps();
     swSerial[7] = new SoftwareSerial();
     swSerial[7]->begin(9600, SWSERIAL_8N1, GPS_RX, GPS_TX);
-    SerialTask[7] = new SerialNmeaListenerTask(
+    new SerialNmeaListenerTask(
         "GPS", swSerial[7], [](std::vector<uint8_t> &msg) {
           Serial.print(getLine(msg));
           if (swSerial[1])
@@ -135,7 +134,7 @@ void setup() {
 void configureUbloxM8Gps() {
   // Use HardwareSerial2 to configure GPS, since Baudrate of 115200 is
   // problamatic with SoftwareSerial and setting the baudrate is not working
-  Serial2.begin(115200, SERIAL_8N1, GPIO_NUM_23, GPIO_NUM_19);
+  Serial2.begin(115200, SERIAL_8N1, GPS_RX, GPS_TX);
   // pinMode(GPIO_NUM_19, PULLUP);
   delay(1000);
   // Serial2.print("$PUBX,41,1,3,2,115200,0*1D\r\n");
