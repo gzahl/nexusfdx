@@ -1,9 +1,9 @@
 #include "SerialFdxListenerTask.h"
 
 SerialFdxListenerTask::SerialFdxListenerTask(
-    const char *name, uint32_t baud, SoftwareSerialConfig config, int8_t rxPin,
-    int8_t txPin, std::function<void(std::vector<uint8_t> &)> sentenceCallback_)
-    : SerialListenerTask(baud, config, rxPin, txPin) {
+    const char *name, SoftwareSerial *swSerial_,
+    std::function<void(std::vector<uint8_t> &)> sentenceCallback_) {
+  swSerial = swSerial_;
   sentenceCallback = sentenceCallback_;
   xTaskCreate(SerialFdxListenerTask::TaskStart, name, 2048, this,
               tskNO_AFFINITY, moduleLoopTaskHandle);
@@ -16,10 +16,10 @@ void SerialFdxListenerTask::TaskStart(void *thisPointer) {
 
 void SerialFdxListenerTask::TaskLoop() {
   while (true) {
-    if (swSerial.available()) {
-      byte = swSerial.read();
+    if (swSerial->available()) {
+      byte = swSerial->read();
       // Serial.printf("0x%x", byte);s
-      if (swSerial.readParity() && len > 0) {
+      if (swSerial->readParity() && len > 0) {
         // printMessage(message, len);
         readMessage(message, len);
         len = 0;

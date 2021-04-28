@@ -9,10 +9,10 @@
 void configureUbloxM8Gps();
 static char *getLine(std::vector<uint8_t> buffer);
 
-static const bool ENABLE_NMEA2 = false;
 static const bool ENABLE_GPS = true;
-static const bool ENABLE_NMEA0 = false;     // AIS Input
-static const bool ENABLE_NMEA1 = false;     // DSC Input, GPS Output
+static const bool ENABLE_NMEA0 = true;    // Radio: AIS Input
+static const bool ENABLE_NMEA1 = true;    // Radio: DSC Input, GPS Output
+static const bool ENABLE_NMEA2 = false;    // Nexus FDX
 static const bool ENABLE_ELITE4HDI = false; // GPS Input, AIS Output
 static const bool ENABLE_WIFI = false;
 
@@ -38,8 +38,9 @@ static const gpio_num_t GPS_RX = GPIO_NUM_23;
 static const gpio_num_t GPS_TX = GPIO_NUM_19;
 
 AsyncUDP udp;
-SerialListenerTask *SerialTask[7];
-SerialListenerTask *SerialGpsTask;
+
+SoftwareSerial *swSerial[8];
+SerialListenerTask *SerialTask[8];
 
 void setup() {
   Serial.begin(115200);
@@ -63,12 +64,21 @@ void setup() {
   // pinMode(GPIO_NUM_26, INPUT);
   // pinMode(GPIO_NUM_18, OUTPUT);
 
+  if (ENABLE_ELITE4HDI) {
+    // Elite4HDI_TX
+    swSerial[4] = new SoftwareSerial();
+    swSerial[4]->begin(38400, SWSERIAL_8N1, NMEA4_RX, NMEA4_TX);
+  }
+
   // AIS input
   if (ENABLE_NMEA0) {
+    swSerial[0] = new SoftwareSerial();
+    swSerial[0]->begin(38400, SWSERIAL_8N1, NMEA0_RX, NMEA0_TX);
     SerialTask[0] = new SerialNmeaListenerTask(
-        "NMEA0_AIS", 38400, SWSERIAL_8N1, NMEA0_RX, NMEA0_TX,
-        [](std::vector<uint8_t> &msg) {
+        "NMEA0_AIS", swSerial[0], [](std::vector<uint8_t> &msg) {
           Serial.print(getLine(msg));
+          if (swSerial[4])
+            swSerial[4]->print(getLine(msg));
           if (ENABLE_WIFI)
             udp.broadcastTo(getLine(msg), BROADCAST_PORT);
         });
@@ -76,9 +86,10 @@ void setup() {
 
   // DSC Input, GPS Output
   if (ENABLE_NMEA1) {
+    swSerial[1] = new SoftwareSerial();
+    swSerial[1]->begin(38400, SWSERIAL_8N1, NMEA1_RX, NMEA1_TX);
     SerialTask[1] = new SerialNmeaListenerTask(
-        "NMEA1_DSCGPS", 38400, SWSERIAL_8N1, NMEA1_RX, NMEA1_TX,
-        [](std::vector<uint8_t> &msg) {
+        "NMEA1_DSCGPS", swSerial[1], [](std::vector<uint8_t> &msg) {
           Serial.print(getLine(msg));
           if (ENABLE_WIFI)
             udp.broadcastTo(getLine(msg), BROADCAST_PORT);
@@ -87,18 +98,20 @@ void setup() {
 
   // Nexus FDX Input
   if (ENABLE_NMEA2) {
-    SerialTask[2] = new SerialFdxListenerTask("NMEA2_NexusFDX", 9600,
-                                              SWSERIAL_8S1, NMEA2_RX, NMEA2_TX,
+    swSerial[2] = new SoftwareSerial();
+    swSerial[2]->begin(9600, SWSERIAL_8S1, NMEA2_RX, NMEA2_TX);
+    SerialTask[2] = new SerialFdxListenerTask("NMEA2_NexusFDX", swSerial[2],
                                               [](std::vector<uint8_t> &msg) {});
   }
 
   if (ENABLE_ELITE4HDI) {
+    swSerial[3] = new SoftwareSerial();
+    swSerial[3]->begin(38400, SWSERIAL_8N1, NMEA3_RX, NMEA3_TX);
     SerialTask[3] = new SerialNmeaListenerTask(
-        "NMEA3_ELITE4HDI_RX", 38400, SWSERIAL_8S1, NMEA3_RX, NMEA3_TX,
-        [](std::vector<uint8_t> &msg) {
+        "NMEA3_ELITE4HDI_RX", swSerial[3], [](std::vector<uint8_t> &msg) {
           Serial.print(getLine(msg));
-          if (SerialTask[1])
-            SerialTask[1]->getSoftwareSerial().print(getLine(msg));
+          if (swSerial[1])
+            swSerial[1]->print(getLine(msg));
           if (ENABLE_WIFI)
             udp.broadcastTo(getLine(msg), BROADCAST_PORT);
         });
@@ -106,12 +119,13 @@ void setup() {
 
   if (ENABLE_GPS) {
     configureUbloxM8Gps();
-    SerialGpsTask = new SerialNmeaListenerTask(
-        "GPS", 9600, SWSERIAL_8N1, GPS_RX, GPS_TX,
-        [](std::vector<uint8_t> &msg) {
+    swSerial[7] = new SoftwareSerial();
+    swSerial[7]->begin(9600, SWSERIAL_8N1, GPS_RX, GPS_TX);
+    SerialTask[7] = new SerialNmeaListenerTask(
+        "GPS", swSerial[7], [](std::vector<uint8_t> &msg) {
           Serial.print(getLine(msg));
-          if (SerialTask[1])
-            SerialTask[1]->getSoftwareSerial().print(getLine(msg));
+          if (swSerial[1])
+            swSerial[1]->print(getLine(msg));
           if (ENABLE_WIFI)
             udp.broadcastTo(getLine(msg), BROADCAST_PORT);
         });

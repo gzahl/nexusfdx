@@ -1,10 +1,10 @@
 #include "SerialNmeaListenerTask.h"
 
 SerialNmeaListenerTask::SerialNmeaListenerTask(
-    const char *name, uint32_t baud, SoftwareSerialConfig config, int8_t rxPin,
-    int8_t txPin, std::function<void(std::vector<uint8_t> &)> sentenceCallback_)
-    : SerialListenerTask(baud, config, rxPin, txPin) {
+    const char *name, SoftwareSerial *swSerial_,
+    std::function<void(std::vector<uint8_t> &)> sentenceCallback_) {
   msg.reserve(80);
+  swSerial = swSerial_;
   sentenceCallback = sentenceCallback_;
   xTaskCreate(SerialNmeaListenerTask::TaskStart, name, 2048, this,
               tskNO_AFFINITY, moduleLoopTaskHandle);
@@ -16,8 +16,8 @@ void SerialNmeaListenerTask::TaskStart(void *thisPointer) {
 
 void SerialNmeaListenerTask::TaskLoop() {
   while (true) {
-    while (swSerial.available()) {
-      if (readNmea(swSerial.read()))
+    while (swSerial->available()) {
+      if (readNmea(swSerial->read()))
         sentenceCallback(msg);
     }
     vTaskDelay(pdMS_TO_TICKS(10));

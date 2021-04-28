@@ -7,8 +7,7 @@
 class SerialFdxListenerTask : public SerialListenerTask {
 public:
   SerialFdxListenerTask(
-      const char *name, uint32_t baud, SoftwareSerialConfig config,
-      int8_t rxPin, int8_t txPin,
+      const char *name, SoftwareSerial* swSerial,
       std::function<void(std::vector<uint8_t> &)> sentenceCallback_);
 
 private:
@@ -26,6 +25,7 @@ private:
   void readMsg21(uint8_t *payload);
   void readMsg112(uint8_t *payload);
   unsigned char calcChksum(unsigned char *msg, unsigned char len);
+  SoftwareSerial *swSerial;
 
   unsigned char len;
   unsigned char byte;
