@@ -1,10 +1,17 @@
 #include "SerialFdxListenerTask.h"
 
 SerialFdxListenerTask::SerialFdxListenerTask(
-    uint32_t baud, SoftwareSerialConfig config, int8_t rxPin, int8_t txPin,
-    std::function<void(std::vector<uint8_t> &)> sentenceCallback_)
-    : SerialListenerTask(baud, config, rxPin, txPin, sentenceCallback_) {
+    const char *name, uint32_t baud, SoftwareSerialConfig config, int8_t rxPin,
+    int8_t txPin, std::function<void(std::vector<uint8_t> &)> sentenceCallback_)
+    : SerialListenerTask(baud, config, rxPin, txPin) {
+  sentenceCallback = sentenceCallback_;
+  xTaskCreate(SerialFdxListenerTask::TaskStart, name, 2048, this,
+              tskNO_AFFINITY, moduleLoopTaskHandle);
   len = 0;
+}
+
+void SerialFdxListenerTask::TaskStart(void *thisPointer) {
+  static_cast<SerialFdxListenerTask *>(thisPointer)->TaskLoop();
 }
 
 void SerialFdxListenerTask::TaskLoop() {
@@ -19,6 +26,7 @@ void SerialFdxListenerTask::TaskLoop() {
       }
       message[len++] = reverse(byte);
     }
+    vTaskDelay(10 / portTICK_PERIOD_MS);
   }
 
   vTaskDelete(NULL);

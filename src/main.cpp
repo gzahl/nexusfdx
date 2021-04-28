@@ -9,16 +9,19 @@
 void configureUbloxM8Gps();
 static char *getLine(std::vector<uint8_t> buffer);
 
-static const bool ENABLE_NMEA2 = true;
-static const bool ENABLE_GPS = false;
+static const bool ENABLE_NMEA2 = false;
+static const bool ENABLE_GPS = true;
 static const bool ENABLE_NMEA0 = false; // AIS Input
 static const bool ENABLE_NMEA1 = false; // DSC Input, GPS Output
 static const bool ENABLE_WIFI = false;
 
 const char *ssid = "Schmuddelwetter_24G";
 const char *password = "9568164986244857";
+const uint16_t BROADCAST_PORT = 2000;
 
 AsyncUDP udp;
+SerialListenerTask *SerialTask[7];
+SerialListenerTask *SerialGpsTask;
 
 void setup() {
   Serial.begin(115200);
@@ -44,38 +47,44 @@ void setup() {
 
   // AIS input
   if (ENABLE_NMEA0) {
-    new SerialNmeaListenerTask(38400, SWSERIAL_8N1, GPIO_NUM_33, GPIO_NUM_14,
-                               [](std::vector<uint8_t> &msg) {
-                                 Serial.print(getLine(msg));
-                                 udp.broadcastTo(getLine(msg), 2000);
-                               });
+    SerialTask[0] = new SerialNmeaListenerTask(
+        "NMEA0_AIS", 38400, SWSERIAL_8N1, GPIO_NUM_33, GPIO_NUM_14,
+        [](std::vector<uint8_t> &msg) {
+          Serial.print(getLine(msg));
+          if (ENABLE_WIFI)
+            udp.broadcastTo(getLine(msg), BROADCAST_PORT);
+        });
   }
 
   // DSC Input, GPS Output
   if (ENABLE_NMEA1) {
-    new SerialNmeaListenerTask(38400, SWSERIAL_8N1, GPIO_NUM_5, GPIO_NUM_13,
-                               [](std::vector<uint8_t> &msg) {
-                                 Serial.print(getLine(msg));
-                                 udp.broadcastTo(getLine(msg), 2000);
-                               });
+    SerialTask[1] = new SerialNmeaListenerTask(
+        "NMEA1_DSCGPS", 38400, SWSERIAL_8N1, GPIO_NUM_5, GPIO_NUM_13,
+        [](std::vector<uint8_t> &msg) {
+          Serial.print(getLine(msg));
+          if (ENABLE_WIFI)
+            udp.broadcastTo(getLine(msg), BROADCAST_PORT);
+        });
   }
 
   // Nexus FDX Input
   if (ENABLE_NMEA2) {
-    new SerialFdxListenerTask(9600, SWSERIAL_8S1, GPIO_NUM_26, GPIO_NUM_18,
-                              [](std::vector<uint8_t> &msg) {});
+    SerialTask[2] = new SerialFdxListenerTask(
+        "NMEA2_NexusFDX", 9600, SWSERIAL_8S1, GPIO_NUM_26, GPIO_NUM_18,
+        [](std::vector<uint8_t> &msg) {});
   }
 
   if (ENABLE_GPS) {
     configureUbloxM8Gps();
-    new SerialNmeaListenerTask(9600, SWSERIAL_8N1, GPIO_NUM_23, GPIO_NUM_19,
-                               [](std::vector<uint8_t> &msg) {
-                                 Serial.print(getLine(msg));
-                                 // swSerialNmea1.print(getLine(msg));
-                                 if (ENABLE_WIFI) {
-                                   udp.broadcastTo(getLine(msg), 2000);
-                                 }
-                               });
+    SerialGpsTask = new SerialNmeaListenerTask(
+        "GPS", 9600, SWSERIAL_8N1, GPIO_NUM_23, GPIO_NUM_19,
+        [](std::vector<uint8_t> &msg) {
+          Serial.print(getLine(msg));
+          if (SerialTask[1])
+            SerialTask[1]->getSoftwareSerial().print(getLine(msg));
+          if (ENABLE_WIFI)
+            udp.broadcastTo(getLine(msg), BROADCAST_PORT);
+        });
   }
 }
 
@@ -100,4 +109,4 @@ static char *getLine(std::vector<uint8_t> buffer) {
   return reinterpret_cast<char *>(buffer.data());
 }
 
-void loop() {}
+void loop() { vTaskDelete(NULL); }
