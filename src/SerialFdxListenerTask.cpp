@@ -6,7 +6,7 @@ SerialFdxListenerTask::SerialFdxListenerTask(
   swSerial = swSerial_;
   sentenceCallback = sentenceCallback_;
   xTaskCreate(SerialFdxListenerTask::TaskStart, name, 2048, this,
-              tskNO_AFFINITY, moduleLoopTaskHandle);
+              tskNO_AFFINITY, &moduleLoopTaskHandle);
   len = 0;
 }
 

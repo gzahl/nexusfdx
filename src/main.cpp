@@ -9,10 +9,10 @@
 void configureUbloxM8Gps();
 static char *getLine(std::vector<uint8_t> buffer);
 
-static const bool ENABLE_GPS = false;
-static const bool ENABLE_NMEA0 = false;      // Radio: AIS Input
-static const bool ENABLE_NMEA1 = false;      // Radio: DSC Input, GPS Output
-static const bool ENABLE_NMEA2 = false;     // Nexus FDX
+static const bool ENABLE_GPS = true;
+static const bool ENABLE_NMEA0 = true;      // Radio: AIS Input
+static const bool ENABLE_NMEA1 = true;      // Radio: DSC Input, GPS Output
+static const bool ENABLE_NMEA2 = true;     // Nexus FDX
 static const bool ENABLE_ELITE4HDI = true; // GPS Input, AIS Output
 static const bool ENABLE_WIFI = false;
 
@@ -44,6 +44,10 @@ SoftwareSerial *swSerial[8];
 void setup() {
   Serial.begin(115200);
   Serial.printf("\nHello, starting now..\n");
+
+  for(int i=0; i<8; i++) {
+    swSerial[i] = NULL;
+  }
 
   if (ENABLE_WIFI) {
     Serial.printf("Connecting to Wifi with ssid '%s'.\n", ssid);

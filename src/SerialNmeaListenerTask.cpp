@@ -6,8 +6,8 @@ SerialNmeaListenerTask::SerialNmeaListenerTask(
   msg.reserve(80);
   swSerial = swSerial_;
   sentenceCallback = sentenceCallback_;
-  xTaskCreate(SerialNmeaListenerTask::TaskStart, name, 2048, this,
-              tskNO_AFFINITY, moduleLoopTaskHandle);
+  xTaskCreate(SerialNmeaListenerTask::TaskStart, name, 2048, (void *)this,
+              tskNO_AFFINITY, &moduleLoopTaskHandle);
 }
 
 void SerialNmeaListenerTask::TaskStart(void *thisPointer) {

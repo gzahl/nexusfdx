@@ -12,7 +12,7 @@ public:
 
 private:
   std::vector<uint8_t> msg;
-  TaskHandle_t *moduleLoopTaskHandle;
+  TaskHandle_t moduleLoopTaskHandle = NULL;
   std::function<void(std::vector<uint8_t> &)> sentenceCallback;
   static void TaskStart(void *thisPointer);
   void TaskLoop();
