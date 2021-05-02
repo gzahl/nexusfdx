@@ -166,7 +166,7 @@ ReactESP app([]() {
 
   if (ENABLE_GPS)
   {
-    Serial2.begin(9600, SERIAL_8N1, GPS_RX, GPS_TX);
+    //Serial2.begin(9600, SERIAL_8N1, GPS_RX, GPS_TX);
 
     //configureUbloxM8Gps();
     
@@ -196,7 +196,7 @@ ReactESP app([]() {
     gpsInput->nmea_data_.gnss_quality.connect_to(gnssQualityReporter);
     gpsInput->nmea_data_.datetime.connect_to(datetimeReporter);*/
 
-    auto *nmeaSentenceParser = new NmeaSentenceParser(&Serial2);
+    auto *nmeaSentenceParser = new NmeaSentenceParser(swSerial[7]);
     auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) { Serial.println("Msg: " + msg); });
     nmeaSentenceParser->nmeaSentence.connect_to(nmeaSentenceReporter);
   }
