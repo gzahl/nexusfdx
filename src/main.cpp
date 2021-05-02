@@ -3,13 +3,15 @@
 #include <SoftwareSerial.h>
 #include <WiFi.h>
 
+#include "sensesp.h"
+
 #include "SerialFdxListenerTask.h"
 #include "SerialNmeaListenerTask.h"
 
 void configureUbloxM8Gps();
 static char *getLine(std::vector<uint8_t> buffer);
 
-static const bool ENABLE_GPS = true;
+static const bool ENABLE_GPS = false;
 static const bool ENABLE_NMEA0 = false;      // Radio: AIS Input
 static const bool ENABLE_NMEA1 = false;      // Radio: DSC Input, GPS Output
 static const bool ENABLE_NMEA2 = false;     // Nexus FDX
@@ -41,7 +43,7 @@ AsyncUDP udp;
 
 SoftwareSerial *swSerial[8];
 
-void setup() {
+ReactESP app([]() {
   Serial.begin(115200);
   Serial.printf("\nHello, starting now..\n");
 
@@ -152,7 +154,7 @@ void setup() {
             udp.broadcastTo(getLine(msg), BROADCAST_PORT);
         }, true);
   }
-}
+});
 
 void configureUbloxM8Gps() {
   // Use HardwareSerial2 to configure GPS, since Baudrate of 115200 is
@@ -174,5 +176,3 @@ void configureUbloxM8Gps() {
 static char *getLine(std::vector<uint8_t> buffer) {
   return reinterpret_cast<char *>(buffer.data());
 }
-
-void loop() { vTaskDelete(NULL); }
