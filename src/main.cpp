@@ -7,10 +7,9 @@
 #include "system/lambda_consumer.h"
 #include "wiring_helpers.h"
 
-#include "SerialFdxListenerTask.h"
-#include "SerialNmeaListenerTask.h"
+#include "FdxSource.h"
 
-#include "NmeaSentenceParser.h"
+#include "NmeaSentenceSource.h"
 
 void configureUbloxM8Gps();
 
@@ -82,7 +81,7 @@ ReactESP app([]() {
   if (ENABLE_NMEA0) {
     swSerial[0] = new SoftwareSerial();
     swSerial[0]->begin(38400, SWSERIAL_8N1, NMEA0_RX, NMEA0_TX);
-    auto *nmeaSentenceParser = new NmeaSentenceParser(swSerial[0]);
+    auto *nmeaSentenceSource = new NmeaSentenceSource(swSerial[0]);
     auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
       Serial.print(msg);
       if (swSerial[4])
@@ -90,34 +89,33 @@ ReactESP app([]() {
       if (ENABLE_WIFI)
         udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
     });
-    nmeaSentenceParser->nmeaSentence.connect_to(nmeaSentenceReporter);
+    nmeaSentenceSource->nmeaSentence.connect_to(nmeaSentenceReporter);
   }
 
   // DSC Input, GPS Output
   if (ENABLE_NMEA1) {
     swSerial[1] = new SoftwareSerial();
     swSerial[1]->begin(38400, SWSERIAL_8N1, NMEA1_RX, NMEA1_TX);
-    auto *nmeaSentenceParser = new NmeaSentenceParser(swSerial[1]);
+    auto *nmeaSentenceSource = new NmeaSentenceSource(swSerial[1]);
     auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
       Serial.print(msg);
       if (ENABLE_WIFI)
         udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
     });
-    nmeaSentenceParser->nmeaSentence.connect_to(nmeaSentenceReporter);
+    nmeaSentenceSource->nmeaSentence.connect_to(nmeaSentenceReporter);
   }
 
   // Nexus FDX Input
   if (ENABLE_NMEA2) {
     swSerial[2] = new SoftwareSerial();
     swSerial[2]->begin(9600, SWSERIAL_8S1, NMEA2_RX, NMEA2_TX);
-    new SerialFdxListenerTask("NMEA2_NexusFDX", swSerial[2],
-                              [](std::vector<uint8_t> &msg) {});
+    auto *fdxSource = new FdxSource(swSerial[2]);
   }
 
   if (ENABLE_ELITE4HDI) {
     swSerial[3] = new SoftwareSerial();
     swSerial[3]->begin(38400, SWSERIAL_8N1, NMEA3_RX, NMEA3_TX);
-    auto *nmeaSentenceParser = new NmeaSentenceParser(swSerial[3]);
+    auto *nmeaSentenceSource = new NmeaSentenceSource(swSerial[3]);
     auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
       Serial.print(msg);
       if (swSerial[1])
@@ -125,7 +123,7 @@ ReactESP app([]() {
       if (ENABLE_WIFI)
         udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
     });
-    nmeaSentenceParser->nmeaSentence.connect_to(nmeaSentenceReporter);
+    nmeaSentenceSource->nmeaSentence.connect_to(nmeaSentenceReporter);
   }
 
   if (ENABLE_GPS) {
@@ -134,7 +132,7 @@ ReactESP app([]() {
     swSerial[7] = new SoftwareSerial();
     swSerial[7]->begin(9600, SWSERIAL_8N1, GPS_RX, GPS_TX, false, 64, 20);
 
-    auto *nmeaSentenceParser = new NmeaSentenceParser(swSerial[7]);
+    auto *nmeaSentenceSource = new NmeaSentenceSource(swSerial[7]);
     auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
       Serial.println("Msg: " + msg);
       if (swSerial[1])
@@ -142,7 +140,7 @@ ReactESP app([]() {
       if (ENABLE_WIFI)
         udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
     });
-    nmeaSentenceParser->nmeaSentence.connect_to(nmeaSentenceReporter);
+    nmeaSentenceSource->nmeaSentence.connect_to(nmeaSentenceReporter);
   }
   Enable::enable_all();
 });

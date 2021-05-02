@@ -1,45 +1,37 @@
-#include "SerialFdxListenerTask.h"
+#include "FdxSource.h"
 
-SerialFdxListenerTask::SerialFdxListenerTask(
-    const char *name, SoftwareSerial *swSerial_,
-    std::function<void(std::vector<uint8_t> &)> sentenceCallback_) {
-  swSerial = swSerial_;
-  sentenceCallback = sentenceCallback_;
-  xTaskCreate(SerialFdxListenerTask::TaskStart, name, 2048, this,
-              tskNO_AFFINITY, &moduleLoopTaskHandle);
+#include "sensesp.h"
+
+FdxSource::FdxSource(SoftwareSerial *rx_stream) : Sensor() {
+  rx_stream_ = rx_stream;
   len = 0;
 }
 
-void SerialFdxListenerTask::TaskStart(void *thisPointer) {
-  static_cast<SerialFdxListenerTask *>(thisPointer)->TaskLoop();
-}
-
-void SerialFdxListenerTask::TaskLoop() {
-  while (true) {
-    if (swSerial->available()) {
-      byte = swSerial->read();
+void FdxSource::enable() {
+  // enable reading the serial port
+  Serial.println("Enabling FdxSource!");
+  app.onAvailable(*rx_stream_, [this]() {
+    while (rx_stream_->available()) {
+      byte = rx_stream_->read();
       // Serial.printf("0x%x", byte);s
-      if (swSerial->readParity() && len > 0) {
+      if (rx_stream_->readParity() && len > 0) {
         // printMessage(message, len);
         readMessage(message, len);
         len = 0;
       }
       message[len++] = reverse(byte);
     }
-    vTaskDelay(pdMS_TO_TICKS(10));
-  }
-
-  vTaskDelete(NULL);
+  });
 }
 
-unsigned char SerialFdxListenerTask::reverse(unsigned char b) {
+unsigned char FdxSource::reverse(unsigned char b) {
   b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
   b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
   b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
   return b;
 }
 
-void SerialFdxListenerTask::printMessage(unsigned char *msg,
+void FdxSource::printMessage(unsigned char *msg,
                                          unsigned char msglen) {
   for (unsigned char i = 0; i < msglen; i++) {
     Serial.printf("0x%x ", msg[i]);
@@ -47,7 +39,7 @@ void SerialFdxListenerTask::printMessage(unsigned char *msg,
   Serial.printf("\n");
 }
 
-unsigned char SerialFdxListenerTask::calcChksum(unsigned char *msg,
+unsigned char FdxSource::calcChksum(unsigned char *msg,
                                                 unsigned char len) {
   unsigned char chksum = message[0];
   for (unsigned char i = 1; i < len - 1; i++) {
@@ -56,7 +48,7 @@ unsigned char SerialFdxListenerTask::calcChksum(unsigned char *msg,
   return chksum;
 }
 
-void SerialFdxListenerTask::readMessage(unsigned char *msg, unsigned char len) {
+void FdxSource::readMessage(unsigned char *msg, unsigned char len) {
   assert(len > 0);
   bool isSender = (msg[0] >> 7) == 1;
   unsigned char headerPayload = msg[0] & 0b01111111;
@@ -162,14 +154,14 @@ void SerialFdxListenerTask::readMessage(unsigned char *msg, unsigned char len) {
   }
 }
 
-void SerialFdxListenerTask::readData(unsigned char messageId,
+void FdxSource::readData(unsigned char messageId,
                                      unsigned char *payload,
                                      unsigned char len) {
   Serial.printf("[%d] ", messageId);
   printMessage(payload, len);
 }
 
-void SerialFdxListenerTask::readMsg18(uint8_t *payload) {
+void FdxSource::readMsg18(uint8_t *payload) {
   if (payload[0] == 0x0 && payload[1] == 0x0 && payload[2] == 0x0 &&
       payload[3] == 0x20) {
     // No wind, standing still
@@ -188,7 +180,7 @@ void SerialFdxListenerTask::readMsg18(uint8_t *payload) {
                 windspeed, payload[0]);
 }
 
-void SerialFdxListenerTask::readMsg112(uint8_t *payload) {
+void FdxSource::readMsg112(uint8_t *payload) {
   uint8_t signalStrengthByte = payload[1];
   float signalStrength = (float)signalStrengthByte / (float)0xFF * 100.;
   Serial.printf("Wind Transducer signal strength[%%]: %f\n", signalStrength);
@@ -197,7 +189,7 @@ void SerialFdxListenerTask::readMsg112(uint8_t *payload) {
   // seen: Mostly 0x80, somtimes: 0xad, 0xf1, 0xcb 0xc6
 }
 
-void SerialFdxListenerTask::readMsg21(uint8_t *payload) {
+void FdxSource::readMsg21(uint8_t *payload) {
   uint8_t unknownByte = payload[0];
   Serial.printf("Unknown: %u\n", unknownByte);
 }
