@@ -7,7 +7,7 @@ class SerialNmeaListenerTask : public SerialListenerTask {
 public:
   SerialNmeaListenerTask(
       const char *name, SoftwareSerial *swSerial,
-      std::function<void(std::vector<uint8_t> &)> sentenceCallback_);
+      std::function<void(std::vector<uint8_t> &)> sentenceCallback_, bool debug_=false);
   void TaskLoop();
 
 private:
@@ -17,6 +17,7 @@ private:
   static void TaskStart(void *thisPointer);
   bool readNmea(uint8_t byte);
   SoftwareSerial *swSerial;
+  bool debug;
 };
 
 #endif

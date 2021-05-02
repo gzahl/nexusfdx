@@ -10,10 +10,10 @@ void configureUbloxM8Gps();
 static char *getLine(std::vector<uint8_t> buffer);
 
 static const bool ENABLE_GPS = true;
-static const bool ENABLE_NMEA0 = true;      // Radio: AIS Input
-static const bool ENABLE_NMEA1 = true;      // Radio: DSC Input, GPS Output
-static const bool ENABLE_NMEA2 = true;     // Nexus FDX
-static const bool ENABLE_ELITE4HDI = true; // GPS Input, AIS Output
+static const bool ENABLE_NMEA0 = false;      // Radio: AIS Input
+static const bool ENABLE_NMEA1 = false;      // Radio: DSC Input, GPS Output
+static const bool ENABLE_NMEA2 = false;     // Nexus FDX
+static const bool ENABLE_ELITE4HDI = false; // GPS Input, AIS Output
 static const bool ENABLE_WIFI = false;
 
 const char *ssid = "Schmuddelwetter_24G";
@@ -119,11 +119,30 @@ void setup() {
             udp.broadcastTo(getLine(msg), BROADCAST_PORT);
         });
   }
+/*
+  Serial2.begin(38400, SERIAL_8N1, GPS_RX, GPS_TX);
+  while(true) {
+    while(Serial2.available()) {
+      char c = Serial2.read();
+      Serial.print(c);
+    }
+  }*/
+
+    SoftwareSerial sw;
+  sw.begin(9600, SWSERIAL_8N1, 23, 19);
+  while(true) {
+    while(sw.available()) {
+      char c = sw.read();
+      Serial.print(c);
+    }
+        vTaskDelay(1/ portTICK_PERIOD_MS);
+
+  }
 
   if (ENABLE_GPS) {
-    configureUbloxM8Gps();
+    //configureUbloxM8Gps();
     swSerial[7] = new SoftwareSerial();
-    swSerial[7]->begin(9600, SWSERIAL_8N1, GPS_RX, GPS_TX);
+    swSerial[7]->begin(38400, SWSERIAL_8N1, GPS_RX, GPS_TX);
     new SerialNmeaListenerTask(
         "GPS", swSerial[7], [](std::vector<uint8_t> &msg) {
           Serial.print(getLine(msg));
@@ -131,7 +150,7 @@ void setup() {
             swSerial[1]->print(getLine(msg));
           if (ENABLE_WIFI)
             udp.broadcastTo(getLine(msg), BROADCAST_PORT);
-        });
+        }, true);
   }
 }
 
