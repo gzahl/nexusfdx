@@ -12,10 +12,10 @@ public:
 
 private:
   std::vector<uint8_t> msg;
+  bool readNmea(uint8_t byte);
   TaskHandle_t moduleLoopTaskHandle = NULL;
   std::function<void(std::vector<uint8_t> &)> sentenceCallback;
   static void TaskStart(void *thisPointer);
-  bool readNmea(uint8_t byte);
   SoftwareSerial *swSerial;
   bool debug;
 };
