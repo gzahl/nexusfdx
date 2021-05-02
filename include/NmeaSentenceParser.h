@@ -13,6 +13,18 @@ class NmeaSentenceParser : public Sensor {
   Stream* rx_stream_;
   String msg;
   bool readNmea(uint8_t byte);
+
+    void (NmeaSentenceParser::*current_state)(char);
+  void state_start(char c);
+  void state_in_term(char c);
+  void state_in_checksum(char c);
+  // pointer for the next character in buffer
+  int cur_offset;
+  // pointer for the current term in buffer
+  int cur_term;
+  int parity;
+  bool validate_checksum();
+
  
 };
 

@@ -185,7 +185,7 @@ ReactESP app([]() {
             udp.broadcastTo(getLine(msg), BROADCAST_PORT);
         }, true);*/
 
-    /*
+    
     GPSInput* gpsInput = new GPSInput(&Serial2);
 
     auto gpsReporter = new LambdaConsumer<int>([](int numberOfSats){Serial.println("Number of sats: " + numberOfSats);});
