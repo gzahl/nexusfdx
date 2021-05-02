@@ -153,15 +153,15 @@ ReactESP app([]() {
     }
   }*/
 
-  /*  SoftwareSerial sw;
-  sw.begin(9600, SWSERIAL_8N1, 23, 19);
+/*
+  swSerial[7] = new SoftwareSerial();
+  swSerial[7]->begin(9600, SWSERIAL_8N1, 23, 19, false, 64, 20);
   while(true) {
-    while(sw.available()) {
-      char c = sw.read();
+    while(swSerial[7]->available()) {
+      char c = swSerial[7]->read();
       Serial.print(c);
     }
-        vTaskDelay(1/ portTICK_PERIOD_MS);
-
+   //     vTaskDelay(1/ portTICK_PERIOD_MS);
   }*/
 
   if (ENABLE_GPS)
@@ -169,12 +169,12 @@ ReactESP app([]() {
     Serial2.begin(9600, SERIAL_8N1, GPS_RX, GPS_TX);
 
     //configureUbloxM8Gps();
-    /*
+    
     swSerial[7] = new SoftwareSerial();
-    swSerial[7]->begin(9600, SWSERIAL_8N1, GPS_RX, GPS_TX);
+    swSerial[7]->begin(9600, SWSERIAL_8N1, GPS_RX, GPS_TX, false, 64, 20);
     if(swSerial[7]->isListening())
       Serial.println("SwSerial[7] working!");
-    */  
+      
     /*
     new SerialNmeaListenerTask(
         "GPS", swSerial[7], [](std::vector<uint8_t> &msg) {
