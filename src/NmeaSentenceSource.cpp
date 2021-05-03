@@ -43,7 +43,9 @@ void NmeaSentenceSource::state_in_term(char c) {
     break;
   case '*':
     current_state = &NmeaSentenceSource::state_in_checksum;
+    msg.concat(c);
     chksum.clear();
+    break;
   default:
     if (msg.length() > 80) {
       current_state = &NmeaSentenceSource::state_start;
