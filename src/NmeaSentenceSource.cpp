@@ -11,7 +11,7 @@ NmeaSentenceSource::NmeaSentenceSource(Stream *rx_stream) : Sensor() {
 
 void NmeaSentenceSource::enable() {
   // enable reading the serial port
-  Serial.println("Enabling NmeaSentencerParser!");
+  Serial.println("Enabling NmeaSentenceSource!");
   app.onAvailable(*rx_stream_, [this]() {
     while (rx_stream_->available()) {
       handle(rx_stream_->read());
