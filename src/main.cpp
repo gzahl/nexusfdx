@@ -18,7 +18,7 @@ static const bool ENABLE_NMEA0 = false;     // Radio: AIS Input
 static const bool ENABLE_NMEA1 = false;     // Radio: DSC Input, GPS Output
 static const bool ENABLE_NMEA2 = false;     // Nexus FDX
 static const bool ENABLE_ELITE4HDI = false; // GPS Input, AIS Output
-static const bool ENABLE_WIFI = false;
+static const bool ENABLE_WIFI = true;
 
 const char *ssid = "Schmuddelwetter_24G";
 const char *password = "9568164986244857";
@@ -110,6 +110,14 @@ ReactESP app([]() {
     swSerial[2] = new SoftwareSerial();
     swSerial[2]->begin(9600, SWSERIAL_8S1, NMEA2_RX, NMEA2_TX);
     auto *fdxSource = new FdxSource(swSerial[2]);
+    auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
+      Serial.print(msg);
+      if (swSerial[1])
+        swSerial[1]->print(msg);
+      if (ENABLE_WIFI)
+        udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
+    });
+    fdxSource->nmeaSentence.connect_to(nmeaSentenceReporter);
   }
 
   if (ENABLE_ELITE4HDI) {

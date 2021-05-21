@@ -178,6 +178,11 @@ void FdxSource::readMsg18(uint8_t *payload) {
 
   Serial.printf("Direction[°]: %f, Speed[m/s?]: %f, Unknown: %u\n", direction,
                 windspeed, payload[0]);
+  char buf[80];
+  sprintf(buf, "$MWV,%f,R,%f,N,A*\0", direction, windspeed);
+  String msg = buf;
+  msg.concat(calcChecksum(buf));
+  nmeaSentence.emit(msg);
 }
 
 void FdxSource::readMsg112(uint8_t *payload) {
@@ -192,4 +197,20 @@ void FdxSource::readMsg112(uint8_t *payload) {
 void FdxSource::readMsg21(uint8_t *payload) {
   uint8_t unknownByte = payload[0];
   Serial.printf("Unknown: %u\n", unknownByte);
+}
+
+
+char* FdxSource::calcChecksum(char *nmea_data)
+{
+    int crc = 0;
+    int i;
+
+    // the first $ sign
+    for (i = 1; i < strlen(nmea_data); i ++) {
+        crc ^= nmea_data[i];
+    }
+
+    char crcstr[3];
+    sprintf(crcstr, "%hu\0", crc);
+    return crcstr;
 }

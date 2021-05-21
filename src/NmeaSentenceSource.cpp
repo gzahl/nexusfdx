@@ -70,6 +70,7 @@ void NmeaSentenceSource::state_in_checksum(char c) {
       current_state = &NmeaSentenceSource::state_start;
       return;
     }
+    msg.concat(chksum);
     nmeaSentence.emit(msg);
     current_state = &NmeaSentenceSource::state_start;
     break;
