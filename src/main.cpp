@@ -2,6 +2,7 @@
 #include <AsyncUDP.h>
 #include <SoftwareSerial.h>
 #include <WiFi.h>
+#include <ESPmDNS.h>
 
 #include "sensesp.h"
 #include "system/lambda_consumer.h"
@@ -18,10 +19,12 @@ static const bool ENABLE_NMEA0 = false;     // Radio: AIS Input
 static const bool ENABLE_NMEA1 = false;     // Radio: DSC Input, GPS Output
 static const bool ENABLE_NMEA2 = false;     // Nexus FDX
 static const bool ENABLE_ELITE4HDI = false; // GPS Input, AIS Output
-static const bool ENABLE_WIFI = true;
+static const bool ENABLE_WIFI_STA = false;
 
 const char *ssid = "Schmuddelwetter_24G";
 const char *password = "9568164986244857";
+const char *ssid_svala = "Svala";
+const char *password_svala = "8641009916";
 const uint16_t BROADCAST_PORT = 2000;
 
 static const gpio_num_t NMEA0_RX = GPIO_NUM_33;
@@ -38,8 +41,8 @@ static const gpio_num_t NMEA5_RX = GPIO_NUM_17;
 static const gpio_num_t NMEA5_TX = GPIO_NUM_4;
 static const gpio_num_t NMEA6_RX = GPIO_NUM_0;
 static const gpio_num_t NMEA6_TX = GPIO_NUM_16;
-static const gpio_num_t GPS_RX = GPIO_NUM_23;
-static const gpio_num_t GPS_TX = GPIO_NUM_19;
+static const gpio_num_t GPS_RX = GPIO_NUM_19;
+static const gpio_num_t GPS_TX = GPIO_NUM_23;
 
 AsyncUDP udp;
 
@@ -53,7 +56,7 @@ ReactESP app([]() {
     swSerial[i] = NULL;
   }
 
-  if (ENABLE_WIFI) {
+  if (ENABLE_WIFI_STA) {
     Serial.printf("Connecting to Wifi with ssid '%s'.\n", ssid);
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
@@ -65,8 +68,17 @@ ReactESP app([]() {
     } else {
       Serial.println("WiFi connected.");
     }
+  } else {
+    Serial.printf("Wifi AP with ssid '%s'.\n", ssid_svala);
+    WiFi.mode(WIFI_AP);
+    WiFi.softAP(ssid_svala, password_svala);
   }
 
+  if(!MDNS.begin("svala")) {
+     Serial.println("Error starting mDNS");
+     return;
+}
+  
   // swSerial.begin(9600, SWSERIAL_8S1, GPIO_NUM_21);
   // pinMode(GPIO_NUM_26, INPUT);
   // pinMode(GPIO_NUM_18, OUTPUT);
@@ -86,8 +98,7 @@ ReactESP app([]() {
       Serial.print(msg);
       if (swSerial[4])
         swSerial[4]->print(msg);
-      if (ENABLE_WIFI)
-        udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
+      udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
     });
     nmeaSentenceSource->nmeaSentence.connect_to(nmeaSentenceReporter);
   }
@@ -99,8 +110,7 @@ ReactESP app([]() {
     auto *nmeaSentenceSource = new NmeaSentenceSource(swSerial[1]);
     auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
       Serial.print(msg);
-      if (ENABLE_WIFI)
-        udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
+      udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
     });
     nmeaSentenceSource->nmeaSentence.connect_to(nmeaSentenceReporter);
   }
@@ -114,8 +124,7 @@ ReactESP app([]() {
       Serial.print(msg);
       if (swSerial[1])
         swSerial[1]->print(msg);
-      if (ENABLE_WIFI)
-        udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
+      udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
     });
     fdxSource->nmeaSentence.connect_to(nmeaSentenceReporter);
   }
@@ -128,14 +137,13 @@ ReactESP app([]() {
       Serial.print(msg);
       if (swSerial[1])
         swSerial[1]->print(msg);
-      if (ENABLE_WIFI)
-        udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
+      udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
     });
     nmeaSentenceSource->nmeaSentence.connect_to(nmeaSentenceReporter);
   }
 
   if (ENABLE_GPS) {
-    // configureUbloxM8Gps();
+    configureUbloxM8Gps();
 
     swSerial[7] = new SoftwareSerial();
     swSerial[7]->begin(9600, SWSERIAL_8N1, GPS_RX, GPS_TX, false, 64, 20);
@@ -145,8 +153,7 @@ ReactESP app([]() {
       Serial.println("Msg: " + msg);
       if (swSerial[1])
         swSerial[1]->print(msg);
-      if (ENABLE_WIFI)
-        udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
+      udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
     });
     nmeaSentenceSource->nmeaSentence.connect_to(nmeaSentenceReporter);
   }
