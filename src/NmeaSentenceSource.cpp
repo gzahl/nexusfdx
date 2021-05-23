@@ -14,7 +14,11 @@ void NmeaSentenceSource::enable() {
   Serial.println("Enabling NmeaSentenceSource!");
   app.onAvailable(*rx_stream_, [this]() {
     while (rx_stream_->available()) {
-      handle(rx_stream_->read());
+      char c = rx_stream_->read();
+      if(false) {
+        printf("%c", c);
+      }
+      handle(c);
     }
   });
 }
@@ -24,6 +28,7 @@ void NmeaSentenceSource::handle(char c) { (this->*(current_state))(c); }
 void NmeaSentenceSource::state_start(char c) {
   switch (c) {
   case '$':
+  case '!':
     current_state = &NmeaSentenceSource::state_in_term;
     msg = c;
     parity = 0;
@@ -48,6 +53,7 @@ void NmeaSentenceSource::state_in_term(char c) {
     break;
   default:
     if (msg.length() > 80) {
+      printf("Message too long, reset.\n");
       current_state = &NmeaSentenceSource::state_start;
     } else {
       msg.concat(c);
@@ -66,11 +72,13 @@ void NmeaSentenceSource::state_in_checksum(char c) {
   case '\r':
   case '\n':
     // end of sentence
+    msg.concat(chksum);
+    msg.concat("\r\n");
     if (!validate_checksum()) {
+      //printf("Chksum wrong! '%s'\n", msg.c_str());
       current_state = &NmeaSentenceSource::state_start;
       return;
     }
-    msg.concat(chksum);
     nmeaSentence.emit(msg);
     current_state = &NmeaSentenceSource::state_start;
     break;

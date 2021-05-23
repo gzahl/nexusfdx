@@ -25,7 +25,7 @@ private:
   void readMsg21(uint8_t *payload);
   void readMsg112(uint8_t *payload);
   unsigned char calcChksum(unsigned char *msg, unsigned char len);
-  char* calcChecksum(char *nmea_data);
+  String calcChecksum(char *nmea_data);
 
 
   unsigned char len;

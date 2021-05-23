@@ -31,16 +31,14 @@ unsigned char FdxSource::reverse(unsigned char b) {
   return b;
 }
 
-void FdxSource::printMessage(unsigned char *msg,
-                                         unsigned char msglen) {
+void FdxSource::printMessage(unsigned char *msg, unsigned char msglen) {
   for (unsigned char i = 0; i < msglen; i++) {
     Serial.printf("0x%x ", msg[i]);
   }
   Serial.printf("\n");
 }
 
-unsigned char FdxSource::calcChksum(unsigned char *msg,
-                                                unsigned char len) {
+unsigned char FdxSource::calcChksum(unsigned char *msg, unsigned char len) {
   unsigned char chksum = message[0];
   for (unsigned char i = 1; i < len - 1; i++) {
     chksum = chksum ^ message[i];
@@ -154,9 +152,8 @@ void FdxSource::readMessage(unsigned char *msg, unsigned char len) {
   }
 }
 
-void FdxSource::readData(unsigned char messageId,
-                                     unsigned char *payload,
-                                     unsigned char len) {
+void FdxSource::readData(unsigned char messageId, unsigned char *payload,
+                         unsigned char len) {
   Serial.printf("[%d] ", messageId);
   printMessage(payload, len);
 }
@@ -179,10 +176,8 @@ void FdxSource::readMsg18(uint8_t *payload) {
   Serial.printf("Direction[°]: %f, Speed[m/s?]: %f, Unknown: %u\n", direction,
                 windspeed, payload[0]);
   char buf[80];
-  sprintf(buf, "$MWV,%f,R,%f,N,A*\0", direction, windspeed);
-  String msg = buf;
-  msg.concat(calcChecksum(buf));
-  nmeaSentence.emit(msg);
+  sprintf(buf, "$MWV,%f,R,%f,N,A", direction, windspeed);
+  nmeaSentence.emit(calcChecksum(buf));
 }
 
 void FdxSource::readMsg112(uint8_t *payload) {
@@ -199,18 +194,21 @@ void FdxSource::readMsg21(uint8_t *payload) {
   Serial.printf("Unknown: %u\n", unknownByte);
 }
 
+String FdxSource::calcChecksum(char *nmea_data) {
+  int crc = 0;
+  int i;
 
-char* FdxSource::calcChecksum(char *nmea_data)
-{
-    int crc = 0;
-    int i;
+  // the first $ sign
+  for (i = 1; i < strlen(nmea_data); i++) {
+    crc ^= nmea_data[i];
+  }
 
-    // the first $ sign
-    for (i = 1; i < strlen(nmea_data); i ++) {
-        crc ^= nmea_data[i];
-    }
-
-    char crcstr[3];
-    sprintf(crcstr, "%hu\0", crc);
-    return crcstr;
+  char chksumstr[3];
+  sprintf(chksumstr, "%02x", crc);
+  String sentence(nmea_data);
+  sentence.concat("*");
+  sentence.concat(chksumstr[0]);
+  sentence.concat(chksumstr[1]);
+  sentence.concat("\r\n");
+  return sentence;
 }

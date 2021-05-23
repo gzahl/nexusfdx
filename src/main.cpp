@@ -44,7 +44,7 @@ static const gpio_num_t NMEA6_TX = GPIO_NUM_16;
 static const gpio_num_t GPS_RX = GPIO_NUM_19;
 static const gpio_num_t GPS_TX = GPIO_NUM_23;
 
-int bufCapacity = 64;
+int bufCapacity = 80;
 int isrBufCapacity = 20;
 
 AsyncUDP udp;
@@ -95,7 +95,7 @@ ReactESP app([]() {
   // AIS input
   if (ENABLE_NMEA0) {
     swSerial[0] = new SoftwareSerial();
-    swSerial[0]->begin(38400, SWSERIAL_8N1, NMEA0_RX, NMEA0_TX);
+    swSerial[0]->begin(38400, SWSERIAL_8N1, NMEA0_RX, NMEA0_TX, false, bufCapacity, isrBufCapacity);
     auto *nmeaSentenceSource = new NmeaSentenceSource(swSerial[0]);
     auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
       Serial.print(msg);
@@ -125,8 +125,8 @@ ReactESP app([]() {
     auto *fdxSource = new FdxSource(swSerial[2]);
     auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
       Serial.print(msg);
-      if (swSerial[1])
-        swSerial[1]->print(msg);
+      //if (swSerial[1])
+      //  swSerial[1]->print(msg);
       udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
     });
     fdxSource->nmeaSentence.connect_to(nmeaSentenceReporter);
@@ -153,7 +153,7 @@ ReactESP app([]() {
 
     auto *nmeaSentenceSource = new NmeaSentenceSource(swSerial[7]);
     auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
-      Serial.println("Msg: " + msg);
+      Serial.print(msg);
       if (swSerial[1])
         swSerial[1]->print(msg);
       udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
