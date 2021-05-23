@@ -15,9 +15,9 @@
 void configureUbloxM8Gps();
 
 static const bool ENABLE_GPS = true;
-static const bool ENABLE_NMEA0 = false;     // Radio: AIS Input
-static const bool ENABLE_NMEA1 = false;     // Radio: DSC Input, GPS Output
-static const bool ENABLE_NMEA2 = false;     // Nexus FDX
+static const bool ENABLE_NMEA0 = true;     // Radio: AIS Input
+static const bool ENABLE_NMEA1 = true;     // Radio: DSC Input, GPS Output
+static const bool ENABLE_NMEA2 = true;     // Nexus FDX
 static const bool ENABLE_ELITE4HDI = false; // GPS Input, AIS Output
 static const bool ENABLE_WIFI_STA = false;
 
@@ -43,6 +43,9 @@ static const gpio_num_t NMEA6_RX = GPIO_NUM_0;
 static const gpio_num_t NMEA6_TX = GPIO_NUM_16;
 static const gpio_num_t GPS_RX = GPIO_NUM_19;
 static const gpio_num_t GPS_TX = GPIO_NUM_23;
+
+int bufCapacity = 64;
+int isrBufCapacity = 20;
 
 AsyncUDP udp;
 
@@ -86,7 +89,7 @@ ReactESP app([]() {
   if (ENABLE_ELITE4HDI) {
     // Elite4HDI_TX
     swSerial[4] = new SoftwareSerial();
-    swSerial[4]->begin(38400, SWSERIAL_8N1, NMEA4_RX, NMEA4_TX);
+    swSerial[4]->begin(38400, SWSERIAL_8N1, NMEA4_RX, NMEA4_TX, false, bufCapacity, isrBufCapacity);
   }
 
   // AIS input
@@ -106,7 +109,7 @@ ReactESP app([]() {
   // DSC Input, GPS Output
   if (ENABLE_NMEA1) {
     swSerial[1] = new SoftwareSerial();
-    swSerial[1]->begin(38400, SWSERIAL_8N1, NMEA1_RX, NMEA1_TX);
+    swSerial[1]->begin(38400, SWSERIAL_8N1, NMEA1_RX, NMEA1_TX, false, bufCapacity, isrBufCapacity);
     auto *nmeaSentenceSource = new NmeaSentenceSource(swSerial[1]);
     auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
       Serial.print(msg);
@@ -118,7 +121,7 @@ ReactESP app([]() {
   // Nexus FDX Input
   if (ENABLE_NMEA2) {
     swSerial[2] = new SoftwareSerial();
-    swSerial[2]->begin(9600, SWSERIAL_8S1, NMEA2_RX, NMEA2_TX);
+    swSerial[2]->begin(9600, SWSERIAL_8S1, NMEA2_RX, NMEA2_TX, false, bufCapacity, isrBufCapacity);
     auto *fdxSource = new FdxSource(swSerial[2]);
     auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
       Serial.print(msg);
@@ -131,7 +134,7 @@ ReactESP app([]() {
 
   if (ENABLE_ELITE4HDI) {
     swSerial[3] = new SoftwareSerial();
-    swSerial[3]->begin(38400, SWSERIAL_8N1, NMEA3_RX, NMEA3_TX);
+    swSerial[3]->begin(38400, SWSERIAL_8N1, NMEA3_RX, NMEA3_TX, false, bufCapacity, isrBufCapacity);
     auto *nmeaSentenceSource = new NmeaSentenceSource(swSerial[3]);
     auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
       Serial.print(msg);
@@ -143,10 +146,10 @@ ReactESP app([]() {
   }
 
   if (ENABLE_GPS) {
-    configureUbloxM8Gps();
+    configureUbloxM8Gps(); 
 
     swSerial[7] = new SoftwareSerial();
-    swSerial[7]->begin(9600, SWSERIAL_8N1, GPS_RX, GPS_TX, false, 64, 20);
+    swSerial[7]->begin(9600, SWSERIAL_8N1, GPS_RX, GPS_TX, false, bufCapacity, isrBufCapacity);
 
     auto *nmeaSentenceSource = new NmeaSentenceSource(swSerial[7]);
     auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
