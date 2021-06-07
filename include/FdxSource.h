@@ -11,6 +11,7 @@ public:
   FdxSource(SoftwareSerial *rx_stream);
   virtual void enable() override final;
   ObservableValue<String> nmeaSentence;
+  String writeSentenceMWV(char trueOrApparent, float direction, float windspeed);
 
 private:
   SoftwareSerial *rx_stream_;
@@ -26,7 +27,6 @@ private:
   void readMsg112(uint8_t *payload);
   unsigned char calcChksum(unsigned char *msg, unsigned char len);
   String calcChecksum(char *nmea_data);
-
 
   unsigned char len;
   unsigned char byte;
