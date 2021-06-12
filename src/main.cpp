@@ -129,7 +129,11 @@ ReactESP app([]() {
       //  swSerial[1]->print(msg);
       udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
     });
+    auto rawMessageReporter = new LambdaConsumer<String>([](String msg) {
+      udp.broadcastTo(msg.c_str(), BROADCAST_PORT+1);
+    });
     fdxSource->nmeaSentence.connect_to(nmeaSentenceReporter);
+    fdxSource->rawMessage.connect_to(rawMessageReporter);
   }
 
   if (ENABLE_ELITE4HDI) {

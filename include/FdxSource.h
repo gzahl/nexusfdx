@@ -11,7 +11,9 @@ public:
   FdxSource(SoftwareSerial *rx_stream);
   virtual void enable() override final;
   ObservableValue<String> nmeaSentence;
-  String writeSentenceMWV(char trueOrApparent, float direction, float windspeed);
+  ObservableValue<String> rawMessage;
+  String writeSentenceMWV(char trueOrApparent, float direction,
+                          float windspeed);
 
 private:
   SoftwareSerial *rx_stream_;
@@ -20,6 +22,7 @@ private:
 
   unsigned char reverse(unsigned char);
   void printMessage(unsigned char *msg, unsigned char len);
+  void emitRawMessage(unsigned char *msg, unsigned char len);
   void readMessage(unsigned char *msg, unsigned char len);
   void readData(unsigned char messageId, unsigned char *msg, unsigned char len);
   void readMsg18(uint8_t *payload);

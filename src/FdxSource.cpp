@@ -17,6 +17,7 @@ void FdxSource::enable() {
       if (rx_stream_->readParity() && len > 0) {
         // printMessage(message, len);
         readMessage(message, len);
+        emitRawMessage(message, len);
         len = 0;
       }
       message[len++] = reverse(byte);
@@ -36,6 +37,19 @@ void FdxSource::printMessage(unsigned char *msg, unsigned char msglen) {
     Serial.printf("0x%x ", msg[i]);
   }
   Serial.printf("\n");
+}
+
+
+void FdxSource::emitRawMessage(unsigned char *msg, unsigned char msglen) {
+  String line;
+  char buf[11];
+  sprintf(buf, "%010lu", millis());
+  line.concat(buf);
+  for (unsigned char i = 0; i < msglen; i++) {
+    sprintf(buf, " %x", msg[i]);
+    line.concat(buf);
+  }
+  rawMessage.emit(line);
 }
 
 unsigned char FdxSource::calcChksum(unsigned char *msg, unsigned char len) {
