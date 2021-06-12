@@ -49,7 +49,7 @@ void FdxSource::emitRawMessage(unsigned char *msg, unsigned char msglen) {
     sprintf(buf, " %x", msg[i]);
     line.concat(buf);
   }
-  rawMessage.emit(line);
+  fdxData.rawMessage.emit(line);
 }
 
 unsigned char FdxSource::calcChksum(unsigned char *msg, unsigned char len) {
@@ -182,15 +182,16 @@ void FdxSource::readMsg18(uint8_t *payload) {
       (uint16_t)(payload[1]) << 8 | (uint16_t)(payload[2]);
   // uint16_t direction = (uint16_t)(payload[2]) << 8 | (uint16_t)(payload[3]);
   uint8_t directionByte = payload[3];
-  float direction = (float)directionByte * 360. / 255.;
+  Wind wind;
+
+  wind.direction = (float)directionByte * 360. / 255.;
   // vavg.Insert((float)windspeedBytes);
   // float windspeed = vavg.GetAverage() * 1.e-2 * 1.94;
-  float windspeed = (float)windspeedBytes * 1.e-2 * 1.94;
+  wind.speed = (float)windspeedBytes * 1.e-2 * 1.94;
 
-  Serial.printf("Direction[°]: %f, Speed[m/s?]: %f, Unknown: %u\n", direction,
-                windspeed, payload[0]);
-  nmeaSentence.emit(writeSentenceMWV('R', direction, windspeed));
-  nmeaSentence.emit(writeSentenceMWV('T', direction, windspeed));
+  Serial.printf("Direction[°]: %f, Speed[m/s?]: %f, Unknown: %u\n", wind.direction,
+                wind.speed, payload[0]);
+  fdxData.wind.emit(wind);
 }
 
 void FdxSource::readMsg112(uint8_t *payload) {
@@ -207,27 +208,3 @@ void FdxSource::readMsg21(uint8_t *payload) {
   Serial.printf("Unknown: %u\n", unknownByte);
 }
 
-String FdxSource::writeSentenceMWV(char trueOrApparent, float direction, float windspeed) {
-  char buf[80];
-  sprintf(buf, "$MWV,%f,%c,%f,N,A", direction, trueOrApparent, windspeed);
-  return calcChecksum(buf);
-}
-
-String FdxSource::calcChecksum(char *nmea_data) {
-  int crc = 0;
-  int i;
-
-  // the first $ sign
-  for (i = 1; i < strlen(nmea_data); i++) {
-    crc ^= nmea_data[i];
-  }
-
-  char chksumstr[3];
-  sprintf(chksumstr, "%02x", crc);
-  String sentence(nmea_data);
-  sentence.concat("*");
-  sentence.concat(chksumstr[0]);
-  sentence.concat(chksumstr[1]);
-  sentence.concat("\r\n");
-  return sentence;
-}

@@ -9,6 +9,7 @@
 #include "wiring_helpers.h"
 
 #include "FdxSource.h"
+#include "transforms/NmeaMessage.h"
 
 #include "NmeaSentenceSource.h"
 
@@ -132,8 +133,8 @@ ReactESP app([]() {
     auto rawMessageReporter = new LambdaConsumer<String>([](String msg) {
       udp.broadcastTo(msg.c_str(), BROADCAST_PORT+1);
     });
-    fdxSource->nmeaSentence.connect_to(nmeaSentenceReporter);
-    fdxSource->rawMessage.connect_to(rawMessageReporter);
+    fdxSource->fdxData.wind.connect_to(new NmeaMessage('T'))->connect_to(nmeaSentenceReporter);
+    fdxSource->fdxData.rawMessage.connect_to(rawMessageReporter);
   }
 
   if (ENABLE_ELITE4HDI) {

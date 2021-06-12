@@ -6,14 +6,22 @@
 #include "sensors/sensor.h"
 #include "system/observablevalue.h"
 
+struct Wind {
+  float direction;
+  float speed;
+};
+
+struct FdxData {
+  ObservableValue<Wind> wind;
+  ObservableValue<String> rawMessage;
+
+};
+
 class FdxSource : public Sensor {
 public:
   FdxSource(SoftwareSerial *rx_stream);
   virtual void enable() override final;
-  ObservableValue<String> nmeaSentence;
-  ObservableValue<String> rawMessage;
-  String writeSentenceMWV(char trueOrApparent, float direction,
-                          float windspeed);
+  FdxData fdxData;
 
 private:
   SoftwareSerial *rx_stream_;
@@ -29,7 +37,6 @@ private:
   void readMsg21(uint8_t *payload);
   void readMsg112(uint8_t *payload);
   unsigned char calcChksum(unsigned char *msg, unsigned char len);
-  String calcChecksum(char *nmea_data);
 
   unsigned char len;
   unsigned char byte;
