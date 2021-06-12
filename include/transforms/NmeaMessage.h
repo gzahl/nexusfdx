@@ -18,8 +18,8 @@ public:
 
 private:
   char relativeOrTrue_;
-  float direction;
-  float speed;
+  uint8_t received = 0;
+  float inputs[2];
   String calcChecksum(char *nmea_data);
   String writeSentenceMWV(char trueOrApparent, float direction,
                           float windspeed);

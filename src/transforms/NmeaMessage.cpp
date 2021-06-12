@@ -5,15 +5,17 @@ NmeaMessage::NmeaMessage(char relativeOrTrue, String config_path)
     : Transform<float, String>(config_path), relativeOrTrue_(relativeOrTrue) {}
 
 void NmeaMessage::set_input(float input, uint8_t inputChannel) {
-    switch(inputChannel) {
-        case(0): direction = input; break;
-        case(1): this->emit(writeSentenceMWV(relativeOrTrue_, direction, input)); break;
-    }
+  inputs[inputChannel] = input;
+  received |= 1 << inputChannel;
+  if (received == 0b11) {
+    received = 0;
+    this->emit(writeSentenceMWV(relativeOrTrue_, inputs[0], inputs[1]));
+  }
 }
 
 String NmeaMessage::writeSentenceMWV(char trueOrApparent, float direction, float windspeed) {
   char buf[81];
-  sprintf(buf, "$MWV,%f,%c,%f,N,A", direction, trueOrApparent, windspeed);
+  sprintf(buf, "$MWV,%.1f,%c,%.1f,N,A", direction, trueOrApparent, windspeed);
   return calcChecksum(buf);
 }
 
@@ -27,7 +29,7 @@ String NmeaMessage::calcChecksum(char *nmea_data) {
   }
 
   char chksumstr[3];
-  sprintf(chksumstr, "%02x", crc);
+  sprintf(chksumstr, "%02X", crc);
   String sentence(nmea_data);
   sentence.concat("*");
   sentence.concat(chksumstr[0]);

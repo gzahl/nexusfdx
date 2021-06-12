@@ -17,7 +17,6 @@ void FdxSource::enable() {
       if (rx_stream_->readParity() && len > 0) {
         // printMessage(message, len);
         readMessage(message, len);
-        emitRawMessage(message, len);
         len = 0;
       }
       message[len++] = reverse(byte);
@@ -46,9 +45,10 @@ void FdxSource::emitRawMessage(unsigned char *msg, unsigned char msglen) {
   sprintf(buf, "%010lu", millis());
   line.concat(buf);
   for (unsigned char i = 0; i < msglen; i++) {
-    sprintf(buf, " %x", msg[i]);
+    sprintf(buf, " %02X", msg[i]);
     line.concat(buf);
   }
+  line.concat("\r\n");
   fdxData.rawMessage.emit(line);
 }
 
@@ -77,6 +77,7 @@ void FdxSource::readMessage(unsigned char *msg, unsigned char len) {
       return;
     }
 
+    emitRawMessage(message, len);
     unsigned char payloadLen = len - 2;
     unsigned char *payload = msg + 1;
 

@@ -131,13 +131,14 @@ void setupApp() {
       //  swSerial[1]->print(msg);
       udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
     });
+    NmeaMessage* trueWindMessage = new NmeaMessage('T');
+    fdxSource->fdxData.trueWind.direction.connect_to(new MovingAverage(10))->connect_to(trueWindMessage, 0);
+    fdxSource->fdxData.trueWind.speed.connect_to(new MovingAverage(5))->connect_to(trueWindMessage, 1);
+    trueWindMessage->connect_to(nmeaSentenceReporter);
+
     auto rawMessageReporter = new LambdaConsumer<String>([](String msg) {
       udp.broadcastTo(msg.c_str(), BROADCAST_PORT+1);
     });
-    NmeaMessage* trueWindMessage = new NmeaMessage('T');
-    fdxSource->fdxData.trueWind.direction.connect_to(trueWindMessage, 0);
-    fdxSource->fdxData.trueWind.speed.connect_to(new MovingAverage(5))->connect_to(trueWindMessage, 1);
-    trueWindMessage->connect_to(nmeaSentenceReporter);
     fdxSource->fdxData.rawMessage.connect_to(rawMessageReporter);
   }
 
