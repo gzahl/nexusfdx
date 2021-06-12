@@ -2,10 +2,13 @@
 #include "transforms/NmeaMessage.h"
 
 NmeaMessage::NmeaMessage(char relativeOrTrue, String config_path)
-    : Transform<Wind, String>(config_path), relativeOrTrue_(relativeOrTrue) {}
+    : Transform<float, String>(config_path), relativeOrTrue_(relativeOrTrue) {}
 
-void NmeaMessage::set_input(Wind wind, uint8_t inputChannel) {
-  this->emit(writeSentenceMWV(relativeOrTrue_, wind.direction, wind.speed));
+void NmeaMessage::set_input(float input, uint8_t inputChannel) {
+    switch(inputChannel) {
+        case(0): direction = input; break;
+        case(1): this->emit(writeSentenceMWV(relativeOrTrue_, direction, input)); break;
+    }
 }
 
 String NmeaMessage::writeSentenceMWV(char trueOrApparent, float direction, float windspeed) {

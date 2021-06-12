@@ -182,16 +182,15 @@ void FdxSource::readMsg18(uint8_t *payload) {
       (uint16_t)(payload[1]) << 8 | (uint16_t)(payload[2]);
   // uint16_t direction = (uint16_t)(payload[2]) << 8 | (uint16_t)(payload[3]);
   uint8_t directionByte = payload[3];
-  Wind wind;
-
-  wind.direction = (float)directionByte * 360. / 255.;
+  float direction = (float)directionByte * 360. / 255.;
   // vavg.Insert((float)windspeedBytes);
   // float windspeed = vavg.GetAverage() * 1.e-2 * 1.94;
-  wind.speed = (float)windspeedBytes * 1.e-2 * 1.94;
+  float speed = (float)windspeedBytes * 1.e-2 * 1.94;
 
-  Serial.printf("Direction[°]: %f, Speed[m/s?]: %f, Unknown: %u\n", wind.direction,
-                wind.speed, payload[0]);
-  fdxData.wind.emit(wind);
+  Serial.printf("Direction[°]: %f, Speed[m/s?]: %f, Unknown: %u\n", direction,
+                speed, payload[0]);
+  fdxData.trueWind.direction.emit(direction);
+  fdxData.trueWind.speed.emit(speed);
 }
 
 void FdxSource::readMsg112(uint8_t *payload) {

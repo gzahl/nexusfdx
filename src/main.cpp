@@ -10,6 +10,7 @@
 
 #include "FdxSource.h"
 #include "transforms/NmeaMessage.h"
+#include "transforms/moving_average.h"
 
 #include "NmeaSentenceSource.h"
 
@@ -52,7 +53,7 @@ AsyncUDP udp;
 
 SoftwareSerial *swSerial[8];
 
-ReactESP app([]() {
+void setupApp() {
   Serial.begin(115200);
   Serial.printf("\nHello, starting now..\n");
 
@@ -133,7 +134,10 @@ ReactESP app([]() {
     auto rawMessageReporter = new LambdaConsumer<String>([](String msg) {
       udp.broadcastTo(msg.c_str(), BROADCAST_PORT+1);
     });
-    fdxSource->fdxData.wind.connect_to(new NmeaMessage('T'))->connect_to(nmeaSentenceReporter);
+    NmeaMessage* trueWindMessage = new NmeaMessage('T');
+    fdxSource->fdxData.trueWind.direction.connect_to(trueWindMessage, 0);
+    fdxSource->fdxData.trueWind.speed.connect_to(new MovingAverage(5))->connect_to(trueWindMessage, 1);
+    trueWindMessage->connect_to(nmeaSentenceReporter);
     fdxSource->fdxData.rawMessage.connect_to(rawMessageReporter);
   }
 
@@ -166,7 +170,9 @@ ReactESP app([]() {
     nmeaSentenceSource->nmeaSentence.connect_to(nmeaSentenceReporter);
   }
   Enable::enable_all();
-});
+}
+
+ReactESP app(setupApp);
 
 void configureUbloxM8Gps() {
   // Use HardwareSerial2 to configure GPS, since Baudrate of 115200 is

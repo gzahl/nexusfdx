@@ -7,12 +7,13 @@
 #include "system/observablevalue.h"
 
 struct Wind {
-  float direction;
-  float speed;
+  ObservableValue<float> direction;
+  ObservableValue<float> speed;
 };
 
 struct FdxData {
-  ObservableValue<Wind> wind;
+  Wind apparentWind;
+  Wind trueWind;
   ObservableValue<String> rawMessage;
 
 };
