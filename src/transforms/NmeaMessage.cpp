@@ -8,24 +8,29 @@ void NmeaMessage::set_input(float input, uint8_t inputChannel) {
   inputs[inputChannel] = input;
   received |= 1 << inputChannel;
   switch (messageType) {
-    case (TRUE_WIND):
+    case (NMEA_MWV_TRUE):
       if (received == 0b11) {
         received = 0;
         this->emit(writeSentenceMWV('T', inputs[0], inputs[1]));
       }
       break;
-    case (APPARENT_WIND):
+    case (NMEA_MWV_RELATIVE):
       if (received == 0b11) {
         received = 0;
         this->emit(writeSentenceMWV('R', inputs[0], inputs[1]));
       }
       break;
-    case (WATER_TEMPERATURE):
+    case (NMEA_MTW):
       if (received == 0b1) {
         received = 0;
         this->emit(writeSentenceMTW(inputs[0]));
       }
       break;
+    case (NMEA_XDR_VOLTAGE):
+      if (received == 0b1) {
+        received = 0;
+        this->emit(writeSentenceXDR('V', 'V', "BUS_VOLTAGE", inputs[0]));
+      }
   }
 }
 
@@ -42,7 +47,13 @@ String NmeaMessage::writeSentenceMTW(float waterTemperature) {
   return calcChecksum(buf);
 }
 
-String NmeaMessage::calcChecksum(char *nmea_data) {
+String NmeaMessage::writeSentenceXDR(char type, char unit, const char* name, float value) {
+  char buf[81];
+  sprintf(buf, "$XDR,%c,%.2f,%c,%s", type, value, unit, name);
+  return calcChecksum(buf);
+}
+
+String NmeaMessage::calcChecksum(char* nmea_data) {
   int crc = 0;
   int i;
 

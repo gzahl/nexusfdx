@@ -8,10 +8,10 @@
 #include "transforms/transform.h"
 
 typedef enum {
-  TRUE_WIND,
-  APPARENT_WIND,
-  WATER_TEMPERATURE,
-  VOLTAGE
+  NMEA_MWV_TRUE,
+  NMEA_MWV_RELATIVE,
+  NMEA_MTW,
+  NMEA_XDR_VOLTAGE
 } MessageType;
 
 /**
@@ -30,6 +30,7 @@ class NmeaMessage : public Transform<float, String> {
   String writeSentenceMWV(char trueOrApparent, float direction,
                           float windspeed);
   String writeSentenceMTW(float waterTemperature);
+  String writeSentenceXDR(char type, char unit, const char* name, float value);
 };
 
 #endif
