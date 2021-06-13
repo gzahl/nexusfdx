@@ -1,5 +1,20 @@
-//#include <FdxParser.h>
+#include <FdxParser.h>
 #include <unity.h>
+
+void hexToBytes(char* str, unsigned char* buf) {
+  const char* pos = str;
+
+  /* WARNING: no sanitization or error-checking whatsoever */
+  for (size_t count = 0; count < sizeof buf / sizeof *buf; count++) {
+    sscanf(pos, "%2hhx", &buf[count]);
+    pos += 3;
+  }
+
+  // printf("0x");
+  // for(size_t count = 0; count < sizeof val/sizeof *val; count++)
+  //    printf("%02x", val[count]);
+  // printf("\n");
+}
 
 void testSentenceMWV() {
   // auto fdxSource = new FdxSource(NULL);
@@ -13,7 +28,7 @@ void testSentenceMWV() {
 
 void testFails() { TEST_ASSERT_EQUAL_STRING("Not", "Equal"); }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   UNITY_BEGIN();
   RUN_TEST(testSentenceMWV);
   RUN_TEST(testFails);

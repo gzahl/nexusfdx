@@ -4,6 +4,7 @@
 #include <FdxParser.h>
 #include <SoftwareSerial.h>
 
+#include "system/observablevalue.h"
 #include "sensors/sensor.h"
 
 struct Data {

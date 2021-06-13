@@ -1,7 +1,9 @@
 #ifndef FDXPARSER_H
 #define FDXPARSER_H
 
-#include "system/observablevalue.h"
+#include <stdio.h>
+#include <stdint.h>
+#include <assert.h>
 
 typedef enum { UNKNOWN, WIND } FdxType;
 
@@ -20,9 +22,6 @@ class FdxParser {
   FdxData data;
 
  private:
-  String msg;
-  String chksum;
-
   unsigned char reverse(unsigned char);
   void printMessage(unsigned char *msg, unsigned char len);
   void readData(unsigned char messageId, unsigned char *msg, unsigned char len);

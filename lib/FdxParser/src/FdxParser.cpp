@@ -94,15 +94,16 @@ void FdxParser::parse(unsigned char *msg, unsigned char len) {
         readMsg112(payload);
         break;
       default:
-        Serial.printf("Unknown message with key %u of len=%u\n", headerPayload,
-                      payloadLen);
+        //Serial.printf("Unknown message with key %u of len=%u\n", headerPayload,
+        //              payloadLen);
+        break;
     }
   }
 }
 
 void FdxParser::readData(unsigned char messageId, unsigned char *payload,
                          unsigned char len) {
-  Serial.printf("[%d] ", messageId);
+  //Serial.printf("[%d] ", messageId);
   printMessage(payload, len);
 }
 
@@ -110,7 +111,7 @@ void FdxParser::readMsg18(uint8_t *payload) {
   if (payload[0] == 0x0 && payload[1] == 0x0 && payload[2] == 0x0 &&
       payload[3] == 0x20) {
     // No wind, standing still
-    Serial.printf("No wind\n");
+    //Serial.printf("No wind\n");
   }
   uint16_t windspeedBytes =
       (uint16_t)(payload[1]) << 8 | (uint16_t)(payload[2]);
@@ -121,8 +122,8 @@ void FdxParser::readMsg18(uint8_t *payload) {
   // float windspeed = vavg.GetAverage() * 1.e-2 * 1.94;
   float speed = (float)windspeedBytes * 1.e-2 * 1.94;
 
-  Serial.printf("Direction[°]: %f, Speed[m/s?]: %f, Unknown: %u\n", angle,
-                speed, payload[0]);
+  //Serial.printf("Direction[°]: %f, Speed[m/s?]: %f, Unknown: %u\n", angle,
+  //              speed, payload[0]);
   // fdxData->relativeWind.direction.emit(direction);
   // fdxData->relativeWind.speed.emit(speed);
   data.type = WIND;
@@ -133,7 +134,7 @@ void FdxParser::readMsg18(uint8_t *payload) {
 void FdxParser::readMsg112(uint8_t *payload) {
   uint8_t signalStrengthByte = payload[1];
   float signalStrength = (float)signalStrengthByte / (float)0xFF * 100.;
-  Serial.printf("Wind Transducer signal strength[%%]: %f\n", signalStrength);
+  //Serial.printf("Wind Transducer signal strength[%%]: %f\n", signalStrength);
 
   // payload[2] might be a flag of some sorts?
   // seen: Mostly 0x80, somtimes: 0xad, 0xf1, 0xcb 0xc6
@@ -141,7 +142,7 @@ void FdxParser::readMsg112(uint8_t *payload) {
 
 void FdxParser::readMsg21(uint8_t *payload) {
   uint8_t unknownByte = payload[0];
-  Serial.printf("Unknown: %u\n", unknownByte);
+  //Serial.printf("Unknown: %u\n", unknownByte);
 }
 
 unsigned char FdxParser::calcChksum(unsigned char *msg, unsigned char len) {
