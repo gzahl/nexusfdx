@@ -150,6 +150,12 @@ void setupApp() {
     fdxSource->data.temperature.connect_to(
         new NmeaMessage(MessageType::NMEA_MTW));
 
+    fdxSource->data.voltage.connect_to(
+        new NmeaMessage(MessageType::NMEA_XDR_VOLTAGE));
+
+    fdxSource->data.signalStrength.connect_to(
+        new NmeaMessage(MessageType::NMEA_XDR_SIGNALSTRENGTH));
+
     auto rawMessageReporter = new LambdaConsumer<String>(
         [](String msg) { udp.broadcastTo(msg.c_str(), BROADCAST_PORT + 1); });
     fdxSource->data.rawMessage.connect_to(rawMessageReporter);

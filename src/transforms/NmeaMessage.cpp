@@ -31,6 +31,13 @@ void NmeaMessage::set_input(float input, uint8_t inputChannel) {
         received = 0;
         this->emit(writeSentenceXDR('V', 'V', "BUS_VOLTAGE", inputs[0]));
       }
+      break;
+    case (NMEA_XDR_SIGNALSTRENGTH):
+      if (received == 0b1) {
+        received = 0;
+        this->emit(writeSentenceXDR('S', 'P', "SIGNAL_STRENGTH", inputs[0]));
+      }
+      break;
   }
 }
 
@@ -47,7 +54,8 @@ String NmeaMessage::writeSentenceMTW(float waterTemperature) {
   return calcChecksum(buf);
 }
 
-String NmeaMessage::writeSentenceXDR(char type, char unit, const char* name, float value) {
+String NmeaMessage::writeSentenceXDR(char type, char unit, const char* name,
+                                     float value) {
   char buf[81];
   sprintf(buf, "$XDR,%c,%.2f,%c,%s", type, value, unit, name);
   return calcChecksum(buf);
