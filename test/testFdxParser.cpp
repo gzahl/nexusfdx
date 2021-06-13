@@ -37,9 +37,24 @@ void testWind() {
   TEST_ASSERT_EQUAL_FLOAT(16.6258, fdxParser.data.relativeWind.speed);
 }
 
+void testSignalStrength() {
+  auto fdxParser = parse("70 89 AF 80 D6");
+  TEST_ASSERT_EQUAL(WIND_TRANSDUCER_SIGNAL, fdxParser.data.type);
+  TEST_ASSERT_EQUAL_FLOAT(68.62746, fdxParser.data.signalStrength);
+}
+
+void testOtherWind() {
+  auto fdxParser = parse("01 05 03 5B 1B 47");
+  TEST_ASSERT_EQUAL(OTHER_WIND, fdxParser.data.type);
+  TEST_ASSERT_EQUAL_FLOAT(38.11765, fdxParser.data.otherWind.angle);
+  TEST_ASSERT_EQUAL_FLOAT(16.6646, fdxParser.data.otherWind.speed);
+}
+
 int main(int argc, char** argv) {
   UNITY_BEGIN();
   RUN_TEST(testWind);
+  RUN_TEST(testSignalStrength);
+  RUN_TEST(testOtherWind);
   UNITY_END();
 
   return 0;
