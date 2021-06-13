@@ -1,11 +1,16 @@
 #ifndef FDXPARSER_H
 #define FDXPARSER_H
 
-#include <stdio.h>
-#include <stdint.h>
 #include <assert.h>
+#include <stdint.h>
+#include <stdio.h>
 
-typedef enum { UNKNOWN, WIND } FdxType;
+typedef enum {
+  UNKNOWN = 256,
+  ERROR = 257,
+  WRONG_CHKSUM = 258,
+  WIND = 18
+} FdxType;
 
 struct FdxData {
   FdxType type;
@@ -23,16 +28,12 @@ class FdxParser {
 
  private:
   unsigned char reverse(unsigned char);
-  //void printMessage(unsigned char *msg, unsigned char len);
+  // void printMessage(unsigned char *msg, unsigned char len);
   void readData(unsigned char messageId, unsigned char *msg, unsigned char len);
   void readMsg18(uint8_t *payload);
   void readMsg21(uint8_t *payload);
   void readMsg112(uint8_t *payload);
   unsigned char calcChksum(unsigned char *msg, unsigned char len);
-
-  unsigned char len;
-  unsigned char byte;
-  unsigned char message[50];
 };
 
 #endif

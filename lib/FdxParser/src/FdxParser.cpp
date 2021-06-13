@@ -3,7 +3,7 @@
 FdxParser::FdxParser() {}
 
 void FdxParser::parse(unsigned char *msg, unsigned char len) {
-  data.type = UNKNOWN;
+  data.type = FdxType::UNKNOWN;
   bool isSender = (msg[0] >> 7) == 1;
   unsigned char headerPayload = msg[0] & 0b01111111;
   if (isSender) {
@@ -21,12 +21,14 @@ void FdxParser::parse(unsigned char *msg, unsigned char len) {
     unsigned char payloadLen = len - 2;
     unsigned char *payload = msg + 1;
 
-    bool correctChksum = message[len - 1] == calcChksum(msg, len);
+    bool correctChksum = msg[len - 1] == calcChksum(msg, len);
     if (!correctChksum) {
+      data.type = FdxType::WRONG_CHKSUM;
       // printf("Wrong chksum: ");
       // readData(headerPayload, payload, payloadLen);
       return;
     }
+    data.type = (FdxType)headerPayload;
     switch (headerPayload) {
       case (0):
         if (payloadLen != 2) return;
@@ -126,7 +128,6 @@ void FdxParser::readMsg18(uint8_t *payload) {
   //              speed, payload[0]);
   // fdxData->relativeWind.direction.emit(direction);
   // fdxData->relativeWind.speed.emit(speed);
-  data.type = WIND;
   data.relativeWind.angle = angle;
   data.relativeWind.speed = speed;
 }
