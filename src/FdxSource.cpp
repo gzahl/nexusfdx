@@ -48,6 +48,9 @@ void FdxSource::readMessage(unsigned char *msg, unsigned char len) {
     case (WIND_TRANSDUCER_SIGNAL):
       data.signalStrength.emit(fdxParser.data.signalStrength);
       break;
+    case (DEPTH):
+      data.depth.emit(fdxParser.data.depth);
+      break;
     case (UNKNOWN):
       break;
     default:

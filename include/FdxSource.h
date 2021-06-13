@@ -18,6 +18,7 @@ struct Data {
   ObservableValue<float> temperature;
   ObservableValue<float> voltage;
   ObservableValue<float> signalStrength;
+  ObservableValue<float> depth;
   ObservableValue<String> rawMessage;
 };
 

@@ -147,14 +147,21 @@ void setupApp() {
         ->connect_to(trueWindMessage, 1);
     trueWindMessage->connect_to(nmeaSentenceReporter);
 
-    fdxSource->data.temperature.connect_to(
-        new NmeaMessage(MessageType::NMEA_MTW));
+    fdxSource->data.temperature
+        .connect_to(new NmeaMessage(MessageType::NMEA_MTW))
+        ->connect_to(nmeaSentenceReporter);
 
-    fdxSource->data.voltage.connect_to(
-        new NmeaMessage(MessageType::NMEA_XDR_VOLTAGE));
+    fdxSource->data.voltage
+        .connect_to(new NmeaMessage(MessageType::NMEA_XDR_VOLTAGE))
+        ->connect_to(nmeaSentenceReporter);
 
-    fdxSource->data.signalStrength.connect_to(
-        new NmeaMessage(MessageType::NMEA_XDR_SIGNALSTRENGTH));
+    fdxSource->data.signalStrength
+        .connect_to(new NmeaMessage(MessageType::NMEA_XDR_SIGNALSTRENGTH))
+        ->connect_to(nmeaSentenceReporter);
+
+    fdxSource->data.depth.connect_to(new MovingAverage(40))
+        ->connect_to(new NmeaMessage(MessageType::NMEA_DPT))
+        ->connect_to(nmeaSentenceReporter);
 
     auto rawMessageReporter = new LambdaConsumer<String>(
         [](String msg) { udp.broadcastTo(msg.c_str(), BROADCAST_PORT + 1); });

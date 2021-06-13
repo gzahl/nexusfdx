@@ -38,6 +38,12 @@ void NmeaMessage::set_input(float input, uint8_t inputChannel) {
         this->emit(writeSentenceXDR('S', 'P', "SIGNAL_STRENGTH", inputs[0]));
       }
       break;
+    case(NMEA_DPT):
+      if(received == 0b1) {
+        received = 0;
+        this->emit(writeSentenceDPT(inputs[0],0.));
+      }
+      break;
   }
 }
 
@@ -60,6 +66,14 @@ String NmeaMessage::writeSentenceXDR(char type, char unit, const char* name,
   sprintf(buf, "$XDR,%c,%.2f,%c,%s", type, value, unit, name);
   return calcChecksum(buf);
 }
+
+String NmeaMessage::writeSentenceDPT(float depth, float offset) {
+  char buf[81];
+  sprintf(buf, "$DPT,%.1f,%.1f", depth, offset);
+  return calcChecksum(buf);
+}
+
+
 
 String NmeaMessage::calcChecksum(char* nmea_data) {
   int crc = 0;

@@ -50,7 +50,8 @@ void FdxParser::parse(unsigned char *msg, unsigned char len) {
         if (payloadLen != 3) return;
         break;
       case (7):
-        if (payloadLen != 3) return;
+        assert(payloadLen == 3);
+        data.depth = ((float)payload[0]) * 0.1;
         break;
       case (8):
         assert(payloadLen == 1);

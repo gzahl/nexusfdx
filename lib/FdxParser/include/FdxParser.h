@@ -13,7 +13,8 @@ typedef enum {
   WIND_TRANSDUCER_SIGNAL = 112,
   TRUE_WIND = 1,
   TEMPERATURE = 8,
-  VOLTAGE = 9
+  VOLTAGE = 9,
+  DEPTH = 7
 } FdxType;
 
 typedef struct {
@@ -28,6 +29,7 @@ struct FdxData {
   float signalStrength;
   float temperature;
   float voltage;
+  float depth;
 };
 
 class FdxParser {

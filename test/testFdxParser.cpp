@@ -62,6 +62,12 @@ void testVoltage() {
   TEST_ASSERT_EQUAL_FLOAT(12.6, fdxParser.data.voltage);
 }
 
+void testDepth() {
+  auto fdxParser = parse("07 18 01 00 1E");
+  TEST_ASSERT_EQUAL(FdxType::DEPTH, fdxParser.data.type);
+  TEST_ASSERT_EQUAL_FLOAT(2.4, fdxParser.data.depth);
+}
+
 int main(int argc, char** argv) {
   UNITY_BEGIN();
   RUN_TEST(testApparentWind);
@@ -69,6 +75,7 @@ int main(int argc, char** argv) {
   RUN_TEST(testTrueWind);
   RUN_TEST(testTemperature);
   RUN_TEST(testVoltage);
+  RUN_TEST(testDepth);
   UNITY_END();
 
   return 0;

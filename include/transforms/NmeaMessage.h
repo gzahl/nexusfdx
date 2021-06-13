@@ -12,7 +12,8 @@ typedef enum {
   NMEA_MWV_RELATIVE,
   NMEA_MTW,
   NMEA_XDR_VOLTAGE,
-  NMEA_XDR_SIGNALSTRENGTH
+  NMEA_XDR_SIGNALSTRENGTH,
+  NMEA_DPT
 } MessageType;
 
 /**
@@ -32,6 +33,7 @@ class NmeaMessage : public Transform<float, String> {
                           float windspeed);
   String writeSentenceMTW(float waterTemperature);
   String writeSentenceXDR(char type, char unit, const char* name, float value);
+  String writeSentenceDPT(float depth, float offset);
 };
 
 #endif
