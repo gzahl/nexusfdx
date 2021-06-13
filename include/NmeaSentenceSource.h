@@ -5,12 +5,12 @@
 #include "system/observablevalue.h"
 
 class NmeaSentenceSource : public Sensor {
-public:
+ public:
   NmeaSentenceSource(Stream *rx_stream);
   virtual void enable() override final;
   ObservableValue<String> nmeaSentence;
 
-private:
+ private:
   Stream *rx_stream_;
   String msg;
   String chksum;

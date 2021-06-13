@@ -3,30 +3,23 @@
 
 #include "system/observablevalue.h"
 
-typedef enum
-{
-  UNKNOWN,
-  WIND
-} FdxType;
+typedef enum { UNKNOWN, WIND } FdxType;
 
-struct FdxData
-{
+struct FdxData {
   FdxType type;
-  struct
-  {
+  struct {
     float angle;
     float speed;
   } relativeWind;
 };
 
-class FdxParser
-{
-public:
+class FdxParser {
+ public:
   FdxParser();
   void parse(unsigned char *msg, unsigned char len);
   FdxData data;
 
-private:
+ private:
   String msg;
   String chksum;
 

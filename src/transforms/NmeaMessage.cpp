@@ -13,7 +13,8 @@ void NmeaMessage::set_input(float input, uint8_t inputChannel) {
   }
 }
 
-String NmeaMessage::writeSentenceMWV(char trueOrApparent, float direction, float windspeed) {
+String NmeaMessage::writeSentenceMWV(char trueOrApparent, float direction,
+                                     float windspeed) {
   char buf[81];
   sprintf(buf, "$MWV,%.1f,%c,%.1f,N,A", direction, trueOrApparent, windspeed);
   return calcChecksum(buf);

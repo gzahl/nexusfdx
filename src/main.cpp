@@ -1,26 +1,24 @@
 #include <Arduino.h>
 #include <AsyncUDP.h>
+#include <ESPmDNS.h>
 #include <SoftwareSerial.h>
 #include <WiFi.h>
-#include <ESPmDNS.h>
-
-#include "sensesp.h"
-#include "system/lambda_consumer.h"
-#include "wiring_helpers.h"
 
 #include "FdxSource.h"
+#include "NmeaSentenceSource.h"
+#include "sensesp.h"
+#include "system/lambda_consumer.h"
 #include "transforms/NmeaMessage.h"
 #include "transforms/moving_average.h"
-
-#include "NmeaSentenceSource.h"
+#include "wiring_helpers.h"
 
 void configureUbloxM8Gps();
 
 static const bool ENABLE_GPS = true;
-static const bool ENABLE_NMEA0 = true;     // Radio: AIS Input
-static const bool ENABLE_NMEA1 = true;     // Radio: DSC Input, GPS Output
-static const bool ENABLE_NMEA2 = true;     // Nexus FDX
-static const bool ENABLE_ELITE4HDI = false; // GPS Input, AIS Output
+static const bool ENABLE_NMEA0 = true;       // Radio: AIS Input
+static const bool ENABLE_NMEA1 = true;       // Radio: DSC Input, GPS Output
+static const bool ENABLE_NMEA2 = true;       // Nexus FDX
+static const bool ENABLE_ELITE4HDI = false;  // GPS Input, AIS Output
 static const bool ENABLE_WIFI_STA = false;
 
 const char *ssid = "Schmuddelwetter_24G";
@@ -79,11 +77,11 @@ void setupApp() {
     WiFi.softAP(ssid_svala, password_svala);
   }
 
-  if(!MDNS.begin("svala")) {
-     Serial.println("Error starting mDNS");
-     return;
-}
-  
+  if (!MDNS.begin("svala")) {
+    Serial.println("Error starting mDNS");
+    return;
+  }
+
   // swSerial.begin(9600, SWSERIAL_8S1, GPIO_NUM_21);
   // pinMode(GPIO_NUM_26, INPUT);
   // pinMode(GPIO_NUM_18, OUTPUT);
@@ -91,18 +89,19 @@ void setupApp() {
   if (ENABLE_ELITE4HDI) {
     // Elite4HDI_TX
     swSerial[4] = new SoftwareSerial();
-    swSerial[4]->begin(38400, SWSERIAL_8N1, NMEA4_RX, NMEA4_TX, false, bufCapacity, isrBufCapacity);
+    swSerial[4]->begin(38400, SWSERIAL_8N1, NMEA4_RX, NMEA4_TX, false,
+                       bufCapacity, isrBufCapacity);
   }
 
   // AIS input
   if (ENABLE_NMEA0) {
     swSerial[0] = new SoftwareSerial();
-    swSerial[0]->begin(38400, SWSERIAL_8N1, NMEA0_RX, NMEA0_TX, false, bufCapacity, isrBufCapacity);
+    swSerial[0]->begin(38400, SWSERIAL_8N1, NMEA0_RX, NMEA0_TX, false,
+                       bufCapacity, isrBufCapacity);
     auto *nmeaSentenceSource = new NmeaSentenceSource(swSerial[0]);
     auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
       Serial.print(msg);
-      if (swSerial[4])
-        swSerial[4]->print(msg);
+      if (swSerial[4]) swSerial[4]->print(msg);
       udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
     });
     nmeaSentenceSource->nmeaSentence.connect_to(nmeaSentenceReporter);
@@ -111,7 +110,8 @@ void setupApp() {
   // DSC Input, GPS Output
   if (ENABLE_NMEA1) {
     swSerial[1] = new SoftwareSerial();
-    swSerial[1]->begin(38400, SWSERIAL_8N1, NMEA1_RX, NMEA1_TX, false, bufCapacity, isrBufCapacity);
+    swSerial[1]->begin(38400, SWSERIAL_8N1, NMEA1_RX, NMEA1_TX, false,
+                       bufCapacity, isrBufCapacity);
     auto *nmeaSentenceSource = new NmeaSentenceSource(swSerial[1]);
     auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
       Serial.print(msg);
@@ -123,49 +123,51 @@ void setupApp() {
   // Nexus FDX Input
   if (ENABLE_NMEA2) {
     swSerial[2] = new SoftwareSerial();
-    swSerial[2]->begin(9600, SWSERIAL_8S1, NMEA2_RX, NMEA2_TX, false, bufCapacity, isrBufCapacity);
+    swSerial[2]->begin(9600, SWSERIAL_8S1, NMEA2_RX, NMEA2_TX, false,
+                       bufCapacity, isrBufCapacity);
     auto *fdxSource = new FdxSource(swSerial[2]);
     auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
       Serial.print(msg);
-      //if (swSerial[1])
+      // if (swSerial[1])
       //  swSerial[1]->print(msg);
       udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
     });
-    NmeaMessage* relativeWindMessage = new NmeaMessage('R');
-    fdxSource->data.relativeWind.angle.connect_to(new MovingAverage(10))->connect_to(relativeWindMessage, 0);
-    fdxSource->data.relativeWind.speed.connect_to(new MovingAverage(5))->connect_to(relativeWindMessage, 1);
+    NmeaMessage *relativeWindMessage = new NmeaMessage('R');
+    fdxSource->data.relativeWind.angle.connect_to(new MovingAverage(10))
+        ->connect_to(relativeWindMessage, 0);
+    fdxSource->data.relativeWind.speed.connect_to(new MovingAverage(5))
+        ->connect_to(relativeWindMessage, 1);
     relativeWindMessage->connect_to(nmeaSentenceReporter);
 
-    auto rawMessageReporter = new LambdaConsumer<String>([](String msg) {
-      udp.broadcastTo(msg.c_str(), BROADCAST_PORT+1);
-    });
+    auto rawMessageReporter = new LambdaConsumer<String>(
+        [](String msg) { udp.broadcastTo(msg.c_str(), BROADCAST_PORT + 1); });
     fdxSource->data.rawMessage.connect_to(rawMessageReporter);
   }
 
   if (ENABLE_ELITE4HDI) {
     swSerial[3] = new SoftwareSerial();
-    swSerial[3]->begin(38400, SWSERIAL_8N1, NMEA3_RX, NMEA3_TX, false, bufCapacity, isrBufCapacity);
+    swSerial[3]->begin(38400, SWSERIAL_8N1, NMEA3_RX, NMEA3_TX, false,
+                       bufCapacity, isrBufCapacity);
     auto *nmeaSentenceSource = new NmeaSentenceSource(swSerial[3]);
     auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
       Serial.print(msg);
-      if (swSerial[1])
-        swSerial[1]->print(msg);
+      if (swSerial[1]) swSerial[1]->print(msg);
       udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
     });
     nmeaSentenceSource->nmeaSentence.connect_to(nmeaSentenceReporter);
   }
 
   if (ENABLE_GPS) {
-    configureUbloxM8Gps(); 
+    configureUbloxM8Gps();
 
     swSerial[7] = new SoftwareSerial();
-    swSerial[7]->begin(9600, SWSERIAL_8N1, GPS_RX, GPS_TX, false, bufCapacity, isrBufCapacity);
+    swSerial[7]->begin(9600, SWSERIAL_8N1, GPS_RX, GPS_TX, false, bufCapacity,
+                       isrBufCapacity);
 
     auto *nmeaSentenceSource = new NmeaSentenceSource(swSerial[7]);
     auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
       Serial.print(msg);
-      if (swSerial[1])
-        swSerial[1]->print(msg);
+      if (swSerial[1]) swSerial[1]->print(msg);
       udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
     });
     nmeaSentenceSource->nmeaSentence.connect_to(nmeaSentenceReporter);

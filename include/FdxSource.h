@@ -1,11 +1,10 @@
 #ifndef FDXSOURCE_H
 #define FDXSOURCE_H
 
+#include <FdxParser.h>
 #include <SoftwareSerial.h>
 
 #include "sensors/sensor.h"
-#include <FdxParser.h>
-
 
 struct Data {
   struct {
@@ -16,12 +15,12 @@ struct Data {
 };
 
 class FdxSource : public Sensor {
-public:
+ public:
   FdxSource(SoftwareSerial *rx_stream);
   virtual void enable() override final;
   Data data;
 
-private:
+ private:
   FdxParser fdxParser;
   SoftwareSerial *rx_stream_;
   String msg;

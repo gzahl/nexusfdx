@@ -26,22 +26,21 @@ void FdxSource::enable() {
 void FdxSource::readMessage(unsigned char *msg, unsigned char len) {
   // printMessage(message, len);
   bool isSender = (msg[0] >> 7) == 1;
-  if(!isSender) {
+  if (!isSender) {
     emitRawMessage(msg, len);
   }
-  fdxParser.parse(msg,len);
-  switch(fdxParser.data.type) {
-    case(WIND):
+  fdxParser.parse(msg, len);
+  switch (fdxParser.data.type) {
+    case (WIND):
       data.relativeWind.angle.emit(fdxParser.data.relativeWind.angle);
       data.relativeWind.speed.emit(fdxParser.data.relativeWind.speed);
       break;
-    case(UNKNOWN):
+    case (UNKNOWN):
       break;
     default:
       break;
-  }      
+  }
 }
-
 
 unsigned char FdxSource::reverse(unsigned char b) {
   b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
@@ -57,7 +56,6 @@ void FdxSource::printMessage(unsigned char *msg, unsigned char msglen) {
   Serial.printf("\n");
 }
 
-
 void FdxSource::emitRawMessage(unsigned char *msg, unsigned char msglen) {
   String line;
   char buf[11];
@@ -70,4 +68,3 @@ void FdxSource::emitRawMessage(unsigned char *msg, unsigned char msglen) {
   line.concat("\r\n");
   data.rawMessage.emit(line);
 }
-
