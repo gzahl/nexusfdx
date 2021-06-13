@@ -1,11 +1,10 @@
 #include "FdxParser.h"
 
-FdxParser::FdxParser(FdxData* fdxData) {
-  fdxData = fdxData;
+FdxParser::FdxParser() {
 }
 
 void FdxParser::parse(unsigned char *msg, unsigned char len) {
-
+  data.type = UNKNOWN;
   bool isSender = (msg[0] >> 7) == 1;
   unsigned char headerPayload = msg[0] & 0b01111111;
   if (isSender) {
@@ -44,7 +43,7 @@ void FdxParser::parse(unsigned char *msg, unsigned char len) {
       if (payloadLen != 4)
         return;
       // readData(headerPayload, payload, payloadLen);
-      readMsg18(payload);
+      //readMsg18(payload);
       break;
     case (3):
       assert(payloadLen == 1);
@@ -126,16 +125,19 @@ void FdxParser::readMsg18(uint8_t *payload) {
   uint16_t windspeedBytes =
       (uint16_t)(payload[1]) << 8 | (uint16_t)(payload[2]);
   // uint16_t direction = (uint16_t)(payload[2]) << 8 | (uint16_t)(payload[3]);
-  uint8_t directionByte = payload[3];
-  float direction = (float)directionByte * 360. / 255.;
+  uint8_t angleByte = payload[3];
+  float angle = (float)angleByte * 360. / 255.;
   // vavg.Insert((float)windspeedBytes);
   // float windspeed = vavg.GetAverage() * 1.e-2 * 1.94;
   float speed = (float)windspeedBytes * 1.e-2 * 1.94;
 
-  Serial.printf("Direction[°]: %f, Speed[m/s?]: %f, Unknown: %u\n", direction,
+  Serial.printf("Direction[°]: %f, Speed[m/s?]: %f, Unknown: %u\n", angle,
                 speed, payload[0]);
-  fdxData->relativeWind.direction.emit(direction);
-  fdxData->relativeWind.speed.emit(speed);
+  //fdxData->relativeWind.direction.emit(direction);
+  //fdxData->relativeWind.speed.emit(speed);
+  data.type = WIND;
+  data.relativeWind.angle = angle;
+  data.relativeWind.speed = speed;
 }
 
 void FdxParser::readMsg112(uint8_t *payload) {

@@ -3,24 +3,30 @@
 
 #include "system/observablevalue.h"
 
-struct Wind {
-  ObservableValue<float> direction;
-  ObservableValue<float> speed;
+typedef enum
+{
+  UNKNOWN,
+  WIND
+} FdxType;
+
+struct FdxData
+{
+  FdxType type;
+  struct
+  {
+    float angle;
+    float speed;
+  } relativeWind;
 };
 
-struct FdxData {
-  Wind relativeWind;
-  ObservableValue<String> rawMessage;
-
-};
-
-class FdxParser {
+class FdxParser
+{
 public:
-  FdxParser(FdxData* fdxData);
+  FdxParser();
   void parse(unsigned char *msg, unsigned char len);
+  FdxData data;
 
 private:
-  FdxData* fdxData;
   String msg;
   String chksum;
 

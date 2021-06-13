@@ -2,7 +2,7 @@
 
 #include "sensesp.h"
 
-FdxSource::FdxSource(SoftwareSerial *rx_stream) : Sensor(), fdxParser(&fdxData) {
+FdxSource::FdxSource(SoftwareSerial *rx_stream) : Sensor(), fdxParser() {
   rx_stream_ = rx_stream;
   len = 0;
 }
@@ -15,18 +15,33 @@ void FdxSource::enable() {
       byte = rx_stream_->read();
       // Serial.printf("0x%x", byte);s
       if (rx_stream_->readParity() && len > 0) {
-        // printMessage(message, len);
-        bool isSender = (msg[0] >> 7) == 1;
-        if(!isSender) {
-          emitRawMessage(message, len);
-        }
-        fdxParser.parse(message,len);
+        readMessage(message, len);
         len = 0;
       }
       message[len++] = reverse(byte);
     }
   });
 }
+
+void FdxSource::readMessage(unsigned char *msg, unsigned char len) {
+  // printMessage(message, len);
+  bool isSender = (msg[0] >> 7) == 1;
+  if(!isSender) {
+    emitRawMessage(msg, len);
+  }
+  fdxParser.parse(msg,len);
+  switch(fdxParser.data.type) {
+    case(WIND):
+      data.relativeWind.angle.emit(fdxParser.data.relativeWind.angle);
+      data.relativeWind.speed.emit(fdxParser.data.relativeWind.speed);
+      break;
+    case(UNKNOWN):
+      break;
+    default:
+      break;
+  }      
+}
+
 
 unsigned char FdxSource::reverse(unsigned char b) {
   b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
@@ -53,6 +68,6 @@ void FdxSource::emitRawMessage(unsigned char *msg, unsigned char msglen) {
     line.concat(buf);
   }
   line.concat("\r\n");
-  fdxData.rawMessage.emit(line);
+  data.rawMessage.emit(line);
 }
 
