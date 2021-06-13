@@ -132,8 +132,8 @@ void setupApp() {
       udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
     });
     NmeaMessage* relativeWindMessage = new NmeaMessage('R');
-    fdxSource->fdxData.trueWind.direction.connect_to(new MovingAverage(10))->connect_to(relativeWindMessage, 0);
-    fdxSource->fdxData.trueWind.speed.connect_to(new MovingAverage(5))->connect_to(relativeWindMessage, 1);
+    fdxSource->fdxData.relativeWind.direction.connect_to(new MovingAverage(10))->connect_to(relativeWindMessage, 0);
+    fdxSource->fdxData.relativeWind.speed.connect_to(new MovingAverage(5))->connect_to(relativeWindMessage, 1);
     relativeWindMessage->connect_to(nmeaSentenceReporter);
 
     auto rawMessageReporter = new LambdaConsumer<String>([](String msg) {

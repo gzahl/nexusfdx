@@ -1,6 +1,8 @@
 {
     "files.associations": {
         "functional": "cpp",
-        "new": "cpp"
+        "new": "cpp",
+        "system_error": "cpp",
+        "forward_list": "cpp"
     }
 }
