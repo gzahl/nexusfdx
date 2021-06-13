@@ -104,7 +104,7 @@ void FdxParser::parse(unsigned char *msg, unsigned char len) {
 void FdxParser::readData(unsigned char messageId, unsigned char *payload,
                          unsigned char len) {
   //Serial.printf("[%d] ", messageId);
-  printMessage(payload, len);
+  //printMessage(payload, len);
 }
 
 void FdxParser::readMsg18(uint8_t *payload) {

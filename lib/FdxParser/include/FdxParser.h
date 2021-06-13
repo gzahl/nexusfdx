@@ -23,7 +23,7 @@ class FdxParser {
 
  private:
   unsigned char reverse(unsigned char);
-  void printMessage(unsigned char *msg, unsigned char len);
+  //void printMessage(unsigned char *msg, unsigned char len);
   void readData(unsigned char messageId, unsigned char *msg, unsigned char len);
   void readMsg18(uint8_t *payload);
   void readMsg21(uint8_t *payload);

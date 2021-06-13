@@ -1,7 +1,7 @@
 #include <FdxParser.h>
 #include <unity.h>
 
-void hexToBytes(char* str, unsigned char* buf) {
+void hexToBytes(const char* str, unsigned char* buf) {
   const char* pos = str;
 
   /* WARNING: no sanitization or error-checking whatsoever */
@@ -16,22 +16,18 @@ void hexToBytes(char* str, unsigned char* buf) {
   // printf("\n");
 }
 
-void testSentenceMWV() {
+void testWind() {
+  unsigned char buf[100];
+  auto fdxParser = FdxParser();
+  hexToBytes("AA", buf);
+  fdxParser.parse(buf, sizeof buf / sizeof *buf);
   // auto fdxSource = new FdxSource(NULL);
-  char actual[100];
-  char expected[100];
-
-  // strcpy(actual, fdxSource->writeSentenceMWV(0.0, 0.0).c_str());
-  // TEST_ASSERT_EQUAL_STRING(expected, actual);
-  TEST_ASSERT_EQUAL_STRING("Hallo", "Hallo");
+  TEST_ASSERT_EQUAL(WIND, fdxParser.data.type);
 }
-
-void testFails() { TEST_ASSERT_EQUAL_STRING("Not", "Equal"); }
 
 int main(int argc, char** argv) {
   UNITY_BEGIN();
-  RUN_TEST(testSentenceMWV);
-  RUN_TEST(testFails);
+  RUN_TEST(testWind);
   UNITY_END();
 
   return 0;
