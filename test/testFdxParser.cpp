@@ -50,11 +50,24 @@ void testOtherWind() {
   TEST_ASSERT_EQUAL_FLOAT(16.6646, fdxParser.data.otherWind.speed);
 }
 
+void testTemperature() {
+  auto fdxParser = parse("08 16 1E");
+  TEST_ASSERT_EQUAL(TEMPERATURE, fdxParser.data.type);
+  TEST_ASSERT_EQUAL(22, fdxParser.data.temperature);
+}
+
+void testVoltage() {
+  auto fdxParser = parse("09 7E 77");
+  TEST_ASSERT_EQUAL(VOLTAGE, fdxParser.data.type);
+  TEST_ASSERT_EQUAL(12.6, fdxParser.data.voltage);}
+
 int main(int argc, char** argv) {
   UNITY_BEGIN();
   RUN_TEST(testWind);
   RUN_TEST(testSignalStrength);
   RUN_TEST(testOtherWind);
+  RUN_TEST(testTemperature);
+  RUN_TEST(testVoltage);
   UNITY_END();
 
   return 0;

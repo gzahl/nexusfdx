@@ -54,9 +54,11 @@ void FdxParser::parse(unsigned char *msg, unsigned char len) {
         break;
       case (8):
         assert(payloadLen == 1);
+        data.temperature = payload[0];
         break;
       case (9):
         assert(payloadLen == 1);
+        data.voltage = ((float)payload[0])*0.1;
         break;
       case (17):
         // Always 0x00s 0x00?

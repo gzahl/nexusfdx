@@ -11,7 +11,9 @@ typedef enum {
   WRONG_CHKSUM = 258,
   WIND = 18,
   WIND_TRANSDUCER_SIGNAL = 112,
-  OTHER_WIND = 1
+  OTHER_WIND = 1,
+  TEMPERATURE = 8,
+  VOLTAGE = 9
 } FdxType;
 
 typedef struct {
@@ -24,6 +26,8 @@ struct FdxData {
   WindType relativeWind;
   WindType otherWind;
   float signalStrength;
+  unsigned char temperature;
+  float voltage;
 };
 
 class FdxParser {
