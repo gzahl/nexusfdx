@@ -9,9 +9,9 @@ typedef enum {
   UNKNOWN = 256,
   ERROR = 257,
   WRONG_CHKSUM = 258,
-  WIND = 18,
+  APPARENT_WIND = 18,
   WIND_TRANSDUCER_SIGNAL = 112,
-  OTHER_WIND = 1,
+  TRUE_WIND = 1,
   TEMPERATURE = 8,
   VOLTAGE = 9
 } FdxType;
@@ -23,10 +23,10 @@ typedef struct {
 
 struct FdxData {
   FdxType type;
-  WindType relativeWind;
-  WindType otherWind;
+  WindType apparantWind;
+  WindType trueWind;
   float signalStrength;
-  unsigned char temperature;
+  float temperature;
   float voltage;
 };
 
@@ -40,7 +40,7 @@ class FdxParser {
   unsigned char reverse(unsigned char);
   // void printMessage(unsigned char *msg, unsigned char len);
   void readData(unsigned char messageId, unsigned char *msg, unsigned char len);
-  void readWind(uint8_t *payload, float& angle, float& speed);
+  void readWind(uint8_t *payload, float &angle, float &speed);
   void readMsg21(uint8_t *payload);
   void readMsg112(uint8_t *payload);
   unsigned char calcChksum(unsigned char *msg, unsigned char len);

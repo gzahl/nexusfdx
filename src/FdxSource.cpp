@@ -31,9 +31,22 @@ void FdxSource::readMessage(unsigned char *msg, unsigned char len) {
   }
   fdxParser.parse(msg, len);
   switch (fdxParser.data.type) {
-    case (WIND):
-      data.relativeWind.angle.emit(fdxParser.data.relativeWind.angle);
-      data.relativeWind.speed.emit(fdxParser.data.relativeWind.speed);
+    case (APPARENT_WIND):
+      data.apparantWind.angle.emit(fdxParser.data.apparantWind.angle);
+      data.apparantWind.speed.emit(fdxParser.data.apparantWind.speed);
+      break;
+    case (TRUE_WIND):
+      data.trueWind.angle.emit(fdxParser.data.trueWind.angle);
+      data.trueWind.speed.emit(fdxParser.data.trueWind.speed);
+      break;
+    case (TEMPERATURE):
+      data.temperature.emit(fdxParser.data.temperature);
+      break;
+    case (VOLTAGE):
+      data.voltage.emit(fdxParser.data.voltage);
+      break;
+    case (WIND_TRANSDUCER_SIGNAL):
+      data.signalStrength.emit(fdxParser.data.signalStrength);
       break;
     case (UNKNOWN):
       break;

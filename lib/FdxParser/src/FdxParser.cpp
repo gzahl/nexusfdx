@@ -42,7 +42,7 @@ void FdxParser::parse(unsigned char *msg, unsigned char len) {
         if (payloadLen != 4) return;
         // readData(headerPayload, payload, payloadLen);
         // readMsg18(payload);
-        readWind(payload, data.otherWind.angle, data.otherWind.speed);
+        readWind(payload, data.trueWind.angle, data.trueWind.speed);
         break;
       case (3):
         assert(payloadLen == 1);
@@ -54,11 +54,11 @@ void FdxParser::parse(unsigned char *msg, unsigned char len) {
         break;
       case (8):
         assert(payloadLen == 1);
-        data.temperature = payload[0];
+        data.temperature = (float)payload[0];
         break;
       case (9):
         assert(payloadLen == 1);
-        data.voltage = ((float)payload[0])*0.1;
+        data.voltage = ((float)payload[0]) * 0.1;
         break;
       case (17):
         // Always 0x00s 0x00?
@@ -68,7 +68,7 @@ void FdxParser::parse(unsigned char *msg, unsigned char len) {
         // Wind direction & speed + unknown byte
         if (payloadLen != 4) return;
         // readData(headerPayload, payload, payloadLen);
-        readWind(payload, data.relativeWind.angle, data.relativeWind.speed);
+        readWind(payload, data.apparantWind.angle, data.apparantWind.speed);
         break;
       case (21):
         // Only the first bytes seem to vary.
@@ -99,7 +99,8 @@ void FdxParser::parse(unsigned char *msg, unsigned char len) {
         readMsg112(payload);
         break;
       default:
-        //Serial.printf("Unknown message with key %u of len=%u\n", headerPayload,
+        // Serial.printf("Unknown message with key %u of len=%u\n",
+        // headerPayload,
         //              payloadLen);
         break;
     }
@@ -108,15 +109,15 @@ void FdxParser::parse(unsigned char *msg, unsigned char len) {
 
 void FdxParser::readData(unsigned char messageId, unsigned char *payload,
                          unsigned char len) {
-  //Serial.printf("[%d] ", messageId);
-  //printMessage(payload, len);
+  // Serial.printf("[%d] ", messageId);
+  // printMessage(payload, len);
 }
 
-void FdxParser::readWind(uint8_t *payload, float& angle, float& speed) {
+void FdxParser::readWind(uint8_t *payload, float &angle, float &speed) {
   if (payload[0] == 0x0 && payload[1] == 0x0 && payload[2] == 0x0 &&
       payload[3] == 0x20) {
     // No wind, standing still
-    //Serial.printf("No wind\n");
+    // Serial.printf("No wind\n");
   }
   uint16_t windspeedBytes =
       (uint16_t)(payload[1]) << 8 | (uint16_t)(payload[2]);
@@ -128,7 +129,7 @@ void FdxParser::readWind(uint8_t *payload, float& angle, float& speed) {
 void FdxParser::readMsg112(uint8_t *payload) {
   uint8_t signalStrengthByte = payload[1];
   float signalStrength = (float)signalStrengthByte / (float)0xFF * 100.;
-  //Serial.printf("Wind Transducer signal strength[%%]: %f\n", signalStrength);
+  // Serial.printf("Wind Transducer signal strength[%%]: %f\n", signalStrength);
 
   // payload[2] might be a flag of some sorts?
   // seen: Mostly 0x80, somtimes: 0xad, 0xf1, 0xcb 0xc6
@@ -137,7 +138,7 @@ void FdxParser::readMsg112(uint8_t *payload) {
 
 void FdxParser::readMsg21(uint8_t *payload) {
   uint8_t unknownByte = payload[0];
-  //Serial.printf("Unknown: %u\n", unknownByte);
+  // Serial.printf("Unknown: %u\n", unknownByte);
 }
 
 unsigned char FdxParser::calcChksum(unsigned char *msg, unsigned char len) {

@@ -132,12 +132,23 @@ void setupApp() {
       //  swSerial[1]->print(msg);
       udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
     });
-    NmeaMessage *relativeWindMessage = new NmeaMessage('R');
-    fdxSource->data.relativeWind.angle.connect_to(new MovingAverage(10))
+    NmeaMessage *relativeWindMessage =
+        new NmeaMessage(MessageType::APPARENT_WIND);
+    fdxSource->data.apparantWind.angle.connect_to(new MovingAverage(10))
         ->connect_to(relativeWindMessage, 0);
-    fdxSource->data.relativeWind.speed.connect_to(new MovingAverage(5))
+    fdxSource->data.apparantWind.speed.connect_to(new MovingAverage(5))
         ->connect_to(relativeWindMessage, 1);
     relativeWindMessage->connect_to(nmeaSentenceReporter);
+
+    NmeaMessage *trueWindMessage = new NmeaMessage(MessageType::TRUE_WIND);
+    fdxSource->data.trueWind.angle.connect_to(new MovingAverage(10))
+        ->connect_to(trueWindMessage, 0);
+    fdxSource->data.trueWind.speed.connect_to(new MovingAverage(5))
+        ->connect_to(trueWindMessage, 1);
+    trueWindMessage->connect_to(nmeaSentenceReporter);
+
+    fdxSource->data.temperature.connect_to(
+        new NmeaMessage(MessageType::WATER_TEMPERATURE));
 
     auto rawMessageReporter = new LambdaConsumer<String>(
         [](String msg) { udp.broadcastTo(msg.c_str(), BROADCAST_PORT + 1); });

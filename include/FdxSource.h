@@ -4,14 +4,20 @@
 #include <FdxParser.h>
 #include <SoftwareSerial.h>
 
-#include "system/observablevalue.h"
 #include "sensors/sensor.h"
+#include "system/observablevalue.h"
+
+typedef struct {
+  ObservableValue<float> angle;
+  ObservableValue<float> speed;
+} ObsWindType;
 
 struct Data {
-  struct {
-    ObservableValue<float> angle;
-    ObservableValue<float> speed;
-  } relativeWind;
+  ObsWindType apparantWind;
+  ObsWindType trueWind;
+  ObservableValue<float> temperature;
+  ObservableValue<float> voltage;
+  ObservableValue<float> signalStrength;
   ObservableValue<String> rawMessage;
 };
 
