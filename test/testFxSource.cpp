@@ -1,28 +1,25 @@
-#include "FdxSource.h"
-#include <Arduino.h>
+//#include "FdxSource.h"
 #include <unity.h>
 
 void testSentenceMWV() {
-  auto fdxSource = new FdxSource(NULL);
+  //auto fdxSource = new FdxSource(NULL);
   char actual[100];
   char expected[100];
 
-  strcpy(actual, fdxSource->writeSentenceMWV(0.0, 0.0).c_str());
-  TEST_ASSERT_EQUAL_STRING(expected, actual);
+  //strcpy(actual, fdxSource->writeSentenceMWV(0.0, 0.0).c_str());
+  //TEST_ASSERT_EQUAL_STRING(expected, actual);
+  TEST_ASSERT_EQUAL_STRING("Hallo","Hallo");
 }
 
-void setup() {
-  // NOTE!!! Wait for >2 secs
-  // if board doesn't support software reset via Serial.DTR/RTS
-  delay(2000);
-
-  UNITY_BEGIN(); // IMPORTANT LINE!
-  RUN_TEST(testSentenceMWV);
+void testFails() {
+  TEST_ASSERT_EQUAL_STRING("Not","Equal");
 }
 
-uint8_t i = 0;
-uint8_t max_blinks = 5;
+int main(int argc, char **argv) {
+    UNITY_BEGIN();
+    RUN_TEST(testSentenceMWV);
+    RUN_TEST(testFails);
+    UNITY_END();
 
-void loop() {
-  UNITY_END(); // stop unit testing
+    return 0;
 }
