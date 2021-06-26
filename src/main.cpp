@@ -51,7 +51,7 @@ int isrBufCapacity = 20;
 
 NetworkPublisher *networkPublisher = new UdpServer(BROADCAST_PORT);
 // NetworkPublisher* NetworkPublisher = new TcpServer(10100);
-NetworkPublisher *debugPublisher = new UdpServer(BROADCAST_PORT  + 1);
+NetworkPublisher *debugPublisher = new UdpServer(BROADCAST_PORT + 1);
 
 SoftwareSerial *swSerial[8];
 
@@ -92,6 +92,15 @@ void setupApp() {
   // pinMode(GPIO_NUM_26, INPUT);
   // pinMode(GPIO_NUM_18, OUTPUT);
 
+  auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
+    Serial.print(msg);
+    if (swSerial[4]) swSerial[4]->print(msg);
+    networkPublisher->send(msg.c_str());
+  });
+
+  auto rawMessageReporter = new LambdaConsumer<String>(
+      [](String msg) { debugPublisher->send(msg.c_str()); });
+
   if (ENABLE_ELITE4HDI) {
     // Elite4HDI_TX
     swSerial[4] = new SoftwareSerial();
@@ -105,25 +114,17 @@ void setupApp() {
     swSerial[0]->begin(38400, SWSERIAL_8N1, NMEA0_RX, NMEA0_TX, false,
                        bufCapacity, isrBufCapacity);
     auto *nmeaSentenceSource = new NmeaSentenceSource(swSerial[0]);
-    auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
-      Serial.print(msg);
-      if (swSerial[4]) swSerial[4]->print(msg);
-      networkPublisher->send(msg.c_str());
-    });
-    nmeaSentenceSource->nmeaSentence.connect_to(nmeaSentenceReporter);
+    nmeaSentenceSource->connect_to(nmeaSentenceReporter);
   }
 
   // DSC Input, GPS Output
+  NmeaSentenceSource *nmea1;
   if (ENABLE_NMEA1) {
     swSerial[1] = new SoftwareSerial();
     swSerial[1]->begin(38400, SWSERIAL_8N1, NMEA1_RX, NMEA1_TX, false,
                        bufCapacity, isrBufCapacity);
-    auto *nmeaSentenceSource = new NmeaSentenceSource(swSerial[1]);
-    auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
-      Serial.print(msg);
-      networkPublisher->send(msg.c_str());
-    });
-    nmeaSentenceSource->nmeaSentence.connect_to(nmeaSentenceReporter);
+    nmea1 = new NmeaSentenceSource(swSerial[1]);
+    nmea1->connect_to(nmeaSentenceReporter);
   }
 
   // Nexus FDX Input
@@ -132,12 +133,6 @@ void setupApp() {
     swSerial[2]->begin(9600, SWSERIAL_8S1, NMEA2_RX, NMEA2_TX, false,
                        bufCapacity, isrBufCapacity);
     auto *fdxSource = new FdxSource(swSerial[2]);
-    auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
-      Serial.print(msg);
-      // if (swSerial[1])
-      //  swSerial[1]->print(msg);
-      networkPublisher->send(msg.c_str());
-    });
     NmeaMessage *relativeWindMessage =
         new NmeaMessage(MessageType::NMEA_MWV_RELATIVE);
     fdxSource->data.apparantWind.angle.connect_to(new MovingAverage(10))
@@ -169,9 +164,6 @@ void setupApp() {
         ->connect_to(new NmeaMessage(MessageType::NMEA_DPT))
         ->connect_to(nmeaSentenceReporter);
 
-    auto rawMessageReporter = new LambdaConsumer<String>(
-        [](String msg) { 
-          debugPublisher->send(msg.c_str());});
     fdxSource->data.rawMessage.connect_to(rawMessageReporter);
   }
 
@@ -180,12 +172,8 @@ void setupApp() {
     swSerial[3]->begin(38400, SWSERIAL_8N1, NMEA3_RX, NMEA3_TX, false,
                        bufCapacity, isrBufCapacity);
     auto *nmeaSentenceSource = new NmeaSentenceSource(swSerial[3]);
-    auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
-      Serial.print(msg);
-      if (swSerial[1]) swSerial[1]->print(msg);
-      networkPublisher->send(msg.c_str());
-    });
-    nmeaSentenceSource->nmeaSentence.connect_to(nmeaSentenceReporter);
+    if (nmea1) nmeaSentenceSource->connect_to(nmea1);
+    nmeaSentenceSource->connect_to(nmeaSentenceReporter);
   }
 
   if (ENABLE_GPS) {
@@ -196,12 +184,8 @@ void setupApp() {
                        isrBufCapacity);
 
     auto *nmeaSentenceSource = new NmeaSentenceSource(swSerial[7]);
-    auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
-      Serial.print(msg);
-      if (swSerial[1]) swSerial[1]->print(msg);
-      networkPublisher->send(msg.c_str());
-    });
-    nmeaSentenceSource->nmeaSentence.connect_to(nmeaSentenceReporter);
+    if (nmea1) nmeaSentenceSource->connect_to(nmea1);
+    nmeaSentenceSource->connect_to(nmeaSentenceReporter);
   }
   Enable::enable_all();
 }

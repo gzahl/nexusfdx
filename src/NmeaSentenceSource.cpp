@@ -4,7 +4,7 @@
 
 #include "sensesp.h"
 
-NmeaSentenceSource::NmeaSentenceSource(Stream *rx_stream) : Sensor() {
+NmeaSentenceSource::NmeaSentenceSource(Stream *rx_stream) : Sensor(), ValueProducer(), ValueConsumer() {
   rx_stream_ = rx_stream;
   current_state = &NmeaSentenceSource::state_start;
 }
@@ -22,6 +22,11 @@ void NmeaSentenceSource::enable() {
     }
   });
 }
+
+void NmeaSentenceSource::set_input(String new_value, uint8_t input_channel) {
+  rx_stream_->write(new_value.c_str());
+}
+
 
 void NmeaSentenceSource::handle(char c) { (this->*(current_state))(c); }
 
@@ -79,7 +84,7 @@ void NmeaSentenceSource::state_in_checksum(char c) {
         current_state = &NmeaSentenceSource::state_start;
         return;
       }
-      nmeaSentence.emit(msg);
+      emit(msg);
       current_state = &NmeaSentenceSource::state_start;
       break;
     default:

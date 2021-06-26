@@ -4,11 +4,11 @@
 #include "sensors/sensor.h"
 #include "system/observablevalue.h"
 
-class NmeaSentenceSource : public Sensor {
+class NmeaSentenceSource : public Sensor, public ValueProducer<String>, public ValueConsumer<String> {
  public:
   NmeaSentenceSource(Stream *rx_stream);
   virtual void enable() override final;
-  ObservableValue<String> nmeaSentence;
+  void set_input(String new_value, uint8_t input_channel);
 
  private:
   Stream *rx_stream_;
