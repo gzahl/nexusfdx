@@ -75,11 +75,13 @@ void setupApp() {
       }
     } else {
       Serial.println("WiFi connected.");
+      Serial.printf("Got IP %s\n", WiFi.localIP().toString().c_str());
     }
   } else {
     Serial.printf("Wifi AP with ssid '%s'.\n", ssid_svala);
     WiFi.mode(WIFI_AP);
     WiFi.softAP(ssid_svala, password_svala);
+    Serial.printf("Got IP %s\n", WiFi.softAPIP().toString().c_str());
   }
 
   if (!MDNS.begin("svala")) {
@@ -87,9 +89,8 @@ void setupApp() {
     return;
   }
 
-  //networkPublisher = new UdpServer(BROADCAST_PORT);
+  // networkPublisher = new UdpServer(BROADCAST_PORT);
   networkPublisher = new TcpServer(TCP_SERVER_PORT);
-
 
   // swSerial.begin(9600, SWSERIAL_8S1, GPIO_NUM_21);
   // pinMode(GPIO_NUM_26, INPUT);
@@ -196,13 +197,17 @@ void setupApp() {
     gps->connect_to(nmeaSentenceReporter);
   }
 
+  /*
   stringProducer = new StringProducer();
   stringProducer->connect_to(nmeaSentenceReporter);
-  app.onRepeat(1000, []() { 
+  app.onRepeat(1000, []() {
     char buf[100];
-    sprintf(buf, "Ping %lu\n", millis());
-    stringProducer->emit(buf); });
-
+    //sprintf(buf, "Ping %lu\n", millis());
+    sprintf(buf, "$GPGLL,3751.65,S,14507.36,E*77\r\n");
+    stringProducer->emit(buf);
+  });
+  */
+ 
   Enable::enable_all();
 }
 
