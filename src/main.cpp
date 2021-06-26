@@ -1,5 +1,4 @@
 #include <Arduino.h>
-#include <AsyncUDP.h>
 #include <ESPmDNS.h>
 #include <SoftwareSerial.h>
 #include <WiFi.h>
@@ -50,8 +49,9 @@ static const gpio_num_t GPS_TX = GPIO_NUM_23;
 int bufCapacity = 80;
 int isrBufCapacity = 20;
 
-NetworkPublisher *NetworkPublisher = new UdpServer(BROADCAST_PORT);
+NetworkPublisher *networkPublisher = new UdpServer(BROADCAST_PORT);
 // NetworkPublisher* NetworkPublisher = new TcpServer(10100);
+NetworkPublisher *debugPublisher = new UdpServer(BROADCAST_PORT  + 1);
 
 SoftwareSerial *swSerial[8];
 
@@ -171,7 +171,7 @@ void setupApp() {
 
     auto rawMessageReporter = new LambdaConsumer<String>(
         [](String msg) { 
-          udp.broadcastTo(msg.c_str(), BROADCAST_PORT + 1); });
+          debugPublisher->send(msg.c_str());});
     fdxSource->data.rawMessage.connect_to(rawMessageReporter);
   }
 

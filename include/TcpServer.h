@@ -1,14 +1,14 @@
 #ifndef TCPSERVER_H
 #define TCPSERVER_H
 
+#include "FreeRTOS.h"
 #include <AsyncTCP.h>
 
 #include <unordered_set>
 
-#include "FreeRTOS.h"
 #include "NetworkPublisher.h"
 
-class TcpServer : NetworkPublisher {
+class TcpServer : public NetworkPublisher {
  public:
   TcpServer(uint16_t port);
   void send(const char* data);

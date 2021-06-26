@@ -1,12 +1,11 @@
 #ifndef UDPSERVER_H
 #define UDPSERVER_H
 
-#include <stdint.h>
-
+#include <Arduino.h>
 #include "AsyncUDP.h"
 #include "NetworkPublisher.h"
 
-class UdpServer : NetworkPublisher {
+class UdpServer : public NetworkPublisher {
  public:
   UdpServer(uint16_t port);
   void send(const char* data);
