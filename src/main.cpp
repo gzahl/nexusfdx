@@ -26,6 +26,7 @@ const char *ssid = "Schmuddelwetter_24G";
 const char *password = "9568164986244857";
 const char *ssid_svala = "Svala";
 const char *password_svala = "8641009916";
+IPAddress local_IP(192, 168, 1, 1);
 const uint16_t BROADCAST_PORT = 2000;
 const uint16_t TCP_SERVER_PORT = 8375;
 
@@ -49,11 +50,11 @@ static const gpio_num_t GPS_TX = GPIO_NUM_23;
 int bufCapacity = 80;
 int isrBufCapacity = 20;
 
-NetworkPublisher *networkPublisher = new UdpServer(BROADCAST_PORT);
-// NetworkPublisher* NetworkPublisher = new TcpServer(10100);
+NetworkPublisher *networkPublisher;
 NetworkPublisher *debugPublisher = new UdpServer(BROADCAST_PORT + 1);
 
 SoftwareSerial *swSerial[8];
+StringProducer *stringProducer;
 
 void setupApp() {
   Serial.begin(115200);
@@ -86,7 +87,9 @@ void setupApp() {
     return;
   }
 
-  TcpServer tcpServer(TCP_SERVER_PORT);
+  //networkPublisher = new UdpServer(BROADCAST_PORT);
+  networkPublisher = new TcpServer(TCP_SERVER_PORT);
+
 
   // swSerial.begin(9600, SWSERIAL_8S1, GPIO_NUM_21);
   // pinMode(GPIO_NUM_26, INPUT);
@@ -94,27 +97,30 @@ void setupApp() {
 
   auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
     Serial.print(msg);
-    if (swSerial[4]) swSerial[4]->print(msg);
     networkPublisher->send(msg.c_str());
   });
 
   auto rawMessageReporter = new LambdaConsumer<String>(
       [](String msg) { debugPublisher->send(msg.c_str()); });
 
+  NmeaSentenceSource *nmea4;
   if (ENABLE_ELITE4HDI) {
     // Elite4HDI_TX
     swSerial[4] = new SoftwareSerial();
     swSerial[4]->begin(38400, SWSERIAL_8N1, NMEA4_RX, NMEA4_TX, false,
                        bufCapacity, isrBufCapacity);
+    nmea4 = new NmeaSentenceSource(swSerial[4]);
+    nmea4->connect_to(nmeaSentenceReporter);
   }
 
   // AIS input
+  NmeaSentenceSource *nmea0;
   if (ENABLE_NMEA0) {
     swSerial[0] = new SoftwareSerial();
     swSerial[0]->begin(38400, SWSERIAL_8N1, NMEA0_RX, NMEA0_TX, false,
                        bufCapacity, isrBufCapacity);
-    auto *nmeaSentenceSource = new NmeaSentenceSource(swSerial[0]);
-    nmeaSentenceSource->connect_to(nmeaSentenceReporter);
+    nmea0 = new NmeaSentenceSource(swSerial[0]);
+    nmea0->connect_to(nmeaSentenceReporter);
   }
 
   // DSC Input, GPS Output
@@ -128,54 +134,56 @@ void setupApp() {
   }
 
   // Nexus FDX Input
+  FdxSource *fdx;
   if (ENABLE_NMEA2) {
     swSerial[2] = new SoftwareSerial();
     swSerial[2]->begin(9600, SWSERIAL_8S1, NMEA2_RX, NMEA2_TX, false,
                        bufCapacity, isrBufCapacity);
-    auto *fdxSource = new FdxSource(swSerial[2]);
+    fdx = new FdxSource(swSerial[2]);
     NmeaMessage *relativeWindMessage =
         new NmeaMessage(MessageType::NMEA_MWV_RELATIVE);
-    fdxSource->data.apparantWind.angle.connect_to(new MovingAverage(10))
+    fdx->data.apparantWind.angle.connect_to(new MovingAverage(10))
         ->connect_to(relativeWindMessage, 0);
-    fdxSource->data.apparantWind.speed.connect_to(new MovingAverage(5))
+    fdx->data.apparantWind.speed.connect_to(new MovingAverage(5))
         ->connect_to(relativeWindMessage, 1);
     relativeWindMessage->connect_to(nmeaSentenceReporter);
 
     NmeaMessage *trueWindMessage = new NmeaMessage(MessageType::NMEA_MWV_TRUE);
-    fdxSource->data.trueWind.angle.connect_to(new MovingAverage(10))
+    fdx->data.trueWind.angle.connect_to(new MovingAverage(10))
         ->connect_to(trueWindMessage, 0);
-    fdxSource->data.trueWind.speed.connect_to(new MovingAverage(5))
+    fdx->data.trueWind.speed.connect_to(new MovingAverage(5))
         ->connect_to(trueWindMessage, 1);
     trueWindMessage->connect_to(nmeaSentenceReporter);
 
-    fdxSource->data.temperature
-        .connect_to(new NmeaMessage(MessageType::NMEA_MTW))
+    fdx->data.temperature.connect_to(new NmeaMessage(MessageType::NMEA_MTW))
         ->connect_to(nmeaSentenceReporter);
 
-    fdxSource->data.voltage
+    fdx->data.voltage
         .connect_to(new NmeaMessage(MessageType::NMEA_XDR_VOLTAGE))
         ->connect_to(nmeaSentenceReporter);
 
-    fdxSource->data.signalStrength
+    fdx->data.signalStrength
         .connect_to(new NmeaMessage(MessageType::NMEA_XDR_SIGNALSTRENGTH))
         ->connect_to(nmeaSentenceReporter);
 
-    fdxSource->data.depth.connect_to(new MovingAverage(40))
+    fdx->data.depth.connect_to(new MovingAverage(40))
         ->connect_to(new NmeaMessage(MessageType::NMEA_DPT))
         ->connect_to(nmeaSentenceReporter);
 
-    fdxSource->data.rawMessage.connect_to(rawMessageReporter);
+    fdx->data.rawMessage.connect_to(rawMessageReporter);
   }
 
+  NmeaSentenceSource *nmea3;
   if (ENABLE_ELITE4HDI) {
     swSerial[3] = new SoftwareSerial();
     swSerial[3]->begin(38400, SWSERIAL_8N1, NMEA3_RX, NMEA3_TX, false,
                        bufCapacity, isrBufCapacity);
-    auto *nmeaSentenceSource = new NmeaSentenceSource(swSerial[3]);
-    if (nmea1) nmeaSentenceSource->connect_to(nmea1);
-    nmeaSentenceSource->connect_to(nmeaSentenceReporter);
+    nmea3 = new NmeaSentenceSource(swSerial[3]);
+    if (nmea1) nmea3->connect_to(nmea1);
+    nmea3->connect_to(nmeaSentenceReporter);
   }
 
+  NmeaSentenceSource *gps;
   if (ENABLE_GPS) {
     configureUbloxM8Gps();
 
@@ -183,10 +191,18 @@ void setupApp() {
     swSerial[7]->begin(9600, SWSERIAL_8N1, GPS_RX, GPS_TX, false, bufCapacity,
                        isrBufCapacity);
 
-    auto *nmeaSentenceSource = new NmeaSentenceSource(swSerial[7]);
-    if (nmea1) nmeaSentenceSource->connect_to(nmea1);
-    nmeaSentenceSource->connect_to(nmeaSentenceReporter);
+    gps = new NmeaSentenceSource(swSerial[7]);
+    if (nmea1) gps->connect_to(nmea1);
+    gps->connect_to(nmeaSentenceReporter);
   }
+
+  stringProducer = new StringProducer();
+  stringProducer->connect_to(nmeaSentenceReporter);
+  app.onRepeat(1000, []() { 
+    char buf[100];
+    sprintf(buf, "Ping %lu\n", millis());
+    stringProducer->emit(buf); });
+
   Enable::enable_all();
 }
 
