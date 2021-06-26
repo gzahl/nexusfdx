@@ -6,6 +6,8 @@
 
 #include "FdxSource.h"
 #include "NmeaSentenceSource.h"
+#include "TcpServer.h"
+#include "UdpServer.h"
 #include "sensesp.h"
 #include "system/lambda_consumer.h"
 #include "transforms/NmeaMessage.h"
@@ -26,6 +28,7 @@ const char *password = "9568164986244857";
 const char *ssid_svala = "Svala";
 const char *password_svala = "8641009916";
 const uint16_t BROADCAST_PORT = 2000;
+const uint16_t TCP_SERVER_PORT = 8375;
 
 static const gpio_num_t NMEA0_RX = GPIO_NUM_33;
 static const gpio_num_t NMEA0_TX = GPIO_NUM_14;
@@ -47,7 +50,8 @@ static const gpio_num_t GPS_TX = GPIO_NUM_23;
 int bufCapacity = 80;
 int isrBufCapacity = 20;
 
-AsyncUDP udp;
+NetworkPublisher *NetworkPublisher = new UdpServer(BROADCAST_PORT);
+// NetworkPublisher* NetworkPublisher = new TcpServer(10100);
 
 SoftwareSerial *swSerial[8];
 
@@ -82,6 +86,8 @@ void setupApp() {
     return;
   }
 
+  TcpServer tcpServer(TCP_SERVER_PORT);
+
   // swSerial.begin(9600, SWSERIAL_8S1, GPIO_NUM_21);
   // pinMode(GPIO_NUM_26, INPUT);
   // pinMode(GPIO_NUM_18, OUTPUT);
@@ -102,7 +108,7 @@ void setupApp() {
     auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
       Serial.print(msg);
       if (swSerial[4]) swSerial[4]->print(msg);
-      udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
+      networkPublisher->send(msg.c_str());
     });
     nmeaSentenceSource->nmeaSentence.connect_to(nmeaSentenceReporter);
   }
@@ -115,7 +121,7 @@ void setupApp() {
     auto *nmeaSentenceSource = new NmeaSentenceSource(swSerial[1]);
     auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
       Serial.print(msg);
-      udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
+      networkPublisher->send(msg.c_str());
     });
     nmeaSentenceSource->nmeaSentence.connect_to(nmeaSentenceReporter);
   }
@@ -130,7 +136,7 @@ void setupApp() {
       Serial.print(msg);
       // if (swSerial[1])
       //  swSerial[1]->print(msg);
-      udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
+      networkPublisher->send(msg.c_str());
     });
     NmeaMessage *relativeWindMessage =
         new NmeaMessage(MessageType::NMEA_MWV_RELATIVE);
@@ -164,7 +170,8 @@ void setupApp() {
         ->connect_to(nmeaSentenceReporter);
 
     auto rawMessageReporter = new LambdaConsumer<String>(
-        [](String msg) { udp.broadcastTo(msg.c_str(), BROADCAST_PORT + 1); });
+        [](String msg) { 
+          udp.broadcastTo(msg.c_str(), BROADCAST_PORT + 1); });
     fdxSource->data.rawMessage.connect_to(rawMessageReporter);
   }
 
@@ -176,7 +183,7 @@ void setupApp() {
     auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
       Serial.print(msg);
       if (swSerial[1]) swSerial[1]->print(msg);
-      udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
+      networkPublisher->send(msg.c_str());
     });
     nmeaSentenceSource->nmeaSentence.connect_to(nmeaSentenceReporter);
   }
@@ -192,7 +199,7 @@ void setupApp() {
     auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
       Serial.print(msg);
       if (swSerial[1]) swSerial[1]->print(msg);
-      udp.broadcastTo(msg.c_str(), BROADCAST_PORT);
+      networkPublisher->send(msg.c_str());
     });
     nmeaSentenceSource->nmeaSentence.connect_to(nmeaSentenceReporter);
   }
