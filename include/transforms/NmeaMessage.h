@@ -13,27 +13,33 @@ typedef enum {
   NMEA_MTW,
   NMEA_XDR_VOLTAGE,
   NMEA_XDR_SIGNALSTRENGTH,
-  NMEA_DPT
+  NMEA_XDR_PITCH,
+  NMEA_XDR_ROLL,
+  NMEA_DPT,
+  NMEA_HDM
 } MessageType;
 
 /**
  * @brief Consumes an object and produces a nmea message.
  */
-class NmeaMessage : public Transform<float, String> {
+template<typename T>
+class NmeaMessage : public Transform<T, String> {
  public:
   NmeaMessage(MessageType messageType, String config_path = "");
-  virtual void set_input(float input, uint8_t input_channel = 0) override;
+  virtual void set_input(T input, uint8_t input_channel = 0) override;
 
  private:
   MessageType messageType;
   uint8_t received = 0;
-  float inputs[8];
+  T inputs[8];
+  char deviceId[3];
   String calcChecksum(char *nmea_data);
-  String writeSentenceMWV(char trueOrApparent, float direction,
-                          float windspeed);
-  String writeSentenceMTW(float waterTemperature);
-  String writeSentenceXDR(char type, char unit, const char* name, float value);
-  String writeSentenceDPT(float depth, float offset);
+  String writeSentenceMWV(char trueOrApparent, T direction,
+                          T windspeed);
+  String writeSentenceMTW(T waterTemperature);
+  String writeSentenceXDR(char type, char unit, const char* name, T value);
+  String writeSentenceDPT(T depth, T offset);
+  String writeSentenceHDM(T heading);
 };
 
 #endif

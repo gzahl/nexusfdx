@@ -7,9 +7,12 @@
 #include "NmeaSentenceSource.h"
 #include "TcpServer.h"
 #include "UdpServer.h"
+#include "icm20948.h"
 #include "sensesp.h"
 #include "system/lambda_consumer.h"
 #include "transforms/NmeaMessage.h"
+#include "transforms/NmeaMessage.t.hpp"
+#include "transforms/lambda_transform.h"
 #include "transforms/moving_average.h"
 #include "wiring_helpers.h"
 
@@ -20,7 +23,7 @@ static const bool ENABLE_NMEA0 = true;       // Radio: AIS Input
 static const bool ENABLE_NMEA1 = true;       // Radio: DSC Input, GPS Output
 static const bool ENABLE_NMEA2 = true;       // Nexus FDX
 static const bool ENABLE_ELITE4HDI = false;  // GPS Input, AIS Output
-static const bool ENABLE_WIFI_STA = false;
+static const bool ENABLE_ICM20948 = true;
 
 const char *ssid = "Schmuddelwetter_24G";
 const char *password = "9568164986244857";
@@ -64,24 +67,18 @@ void setupApp() {
     swSerial[i] = NULL;
   }
 
-  if (ENABLE_WIFI_STA) {
-    Serial.printf("Connecting to Wifi with ssid '%s'.\n", ssid);
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid, password);
-    if (WiFi.waitForConnectResult() != WL_CONNECTED) {
-      Serial.println("WiFi Failed");
-      while (1) {
-        delay(1000);
-      }
-    } else {
-      Serial.println("WiFi connected.");
-      Serial.printf("Got IP %s\n", WiFi.localIP().toString().c_str());
-    }
-  } else {
+  Serial.printf("Connecting to Wifi Station with ssid '%s'.\n", ssid);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  if (WiFi.waitForConnectResult() != WL_CONNECTED) {
+    Serial.println("WiFi Station not found. Falling back to AP.");
     Serial.printf("Wifi AP with ssid '%s'.\n", ssid_svala);
     WiFi.mode(WIFI_AP);
     WiFi.softAP(ssid_svala, password_svala);
     Serial.printf("Got IP %s\n", WiFi.softAPIP().toString().c_str());
+  } else {
+    Serial.println("WiFi connected to Station.");
+    Serial.printf("Got IP %s\n", WiFi.localIP().toString().c_str());
   }
 
   if (!MDNS.begin("svala")) {
@@ -97,7 +94,7 @@ void setupApp() {
   // pinMode(GPIO_NUM_18, OUTPUT);
 
   auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
-    Serial.print(msg);
+    // Serial.print(msg);
     networkPublisher->send(msg.c_str());
   });
 
@@ -141,34 +138,37 @@ void setupApp() {
     swSerial[2]->begin(9600, SWSERIAL_8S1, NMEA2_RX, NMEA2_TX, false,
                        bufCapacity, isrBufCapacity);
     fdx = new FdxSource(swSerial[2]);
-    NmeaMessage *relativeWindMessage =
-        new NmeaMessage(MessageType::NMEA_MWV_RELATIVE);
+    NmeaMessage<float> *relativeWindMessage =
+        new NmeaMessage<float>(MessageType::NMEA_MWV_RELATIVE);
     fdx->data.apparantWind.angle.connect_to(new MovingAverage(10))
         ->connect_to(relativeWindMessage, 0);
     fdx->data.apparantWind.speed.connect_to(new MovingAverage(5))
         ->connect_to(relativeWindMessage, 1);
     relativeWindMessage->connect_to(nmeaSentenceReporter);
 
-    NmeaMessage *trueWindMessage = new NmeaMessage(MessageType::NMEA_MWV_TRUE);
+    NmeaMessage<float> *trueWindMessage =
+        new NmeaMessage<float>(MessageType::NMEA_MWV_TRUE);
     fdx->data.trueWind.angle.connect_to(new MovingAverage(10))
         ->connect_to(trueWindMessage, 0);
     fdx->data.trueWind.speed.connect_to(new MovingAverage(5))
         ->connect_to(trueWindMessage, 1);
     trueWindMessage->connect_to(nmeaSentenceReporter);
 
-    fdx->data.temperature.connect_to(new NmeaMessage(MessageType::NMEA_MTW))
+    fdx->data.temperature
+        .connect_to(new NmeaMessage<float>(MessageType::NMEA_MTW))
         ->connect_to(nmeaSentenceReporter);
 
     fdx->data.voltage
-        .connect_to(new NmeaMessage(MessageType::NMEA_XDR_VOLTAGE))
+        .connect_to(new NmeaMessage<float>(MessageType::NMEA_XDR_VOLTAGE))
         ->connect_to(nmeaSentenceReporter);
 
     fdx->data.signalStrength
-        .connect_to(new NmeaMessage(MessageType::NMEA_XDR_SIGNALSTRENGTH))
+        .connect_to(
+            new NmeaMessage<float>(MessageType::NMEA_XDR_SIGNALSTRENGTH))
         ->connect_to(nmeaSentenceReporter);
 
     fdx->data.depth.connect_to(new MovingAverage(40))
-        ->connect_to(new NmeaMessage(MessageType::NMEA_DPT))
+        ->connect_to(new NmeaMessage<float>(MessageType::NMEA_DPT))
         ->connect_to(nmeaSentenceReporter);
 
     fdx->data.rawMessage.connect_to(rawMessageReporter);
@@ -197,6 +197,19 @@ void setupApp() {
     gps->connect_to(nmeaSentenceReporter);
   }
 
+  Icm20948 *icm;
+  if (ENABLE_ICM20948) {
+    icm = new Icm20948();
+    icm->data.pitch
+        .connect_to(new NmeaMessage<double>(MessageType::NMEA_XDR_PITCH))
+        ->connect_to(nmeaSentenceReporter);
+    icm->data.roll
+        .connect_to(new NmeaMessage<double>(MessageType::NMEA_XDR_ROLL))
+        ->connect_to(nmeaSentenceReporter);
+    icm->data.yaw.connect_to(new NmeaMessage<double>(MessageType::NMEA_HDM))
+        ->connect_to(nmeaSentenceReporter);
+  }
+
   /*
   stringProducer = new StringProducer();
   stringProducer->connect_to(nmeaSentenceReporter);
@@ -207,7 +220,7 @@ void setupApp() {
     stringProducer->emit(buf);
   });
   */
- 
+
   Enable::enable_all();
 }
 
