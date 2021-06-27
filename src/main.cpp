@@ -16,6 +16,11 @@
 #include "transforms/moving_average.h"
 #include "wiring_helpers.h"
 
+#define QUOTE(name) #name
+#define STR(macro) QUOTE(macro)
+#define WIFI_PASSWORD_STR STR(WIFI_PASSWORD)
+#define SVALA_PASSWORD_STR STR(SVALA_PASSWORD)
+
 void configureUbloxM8Gps();
 
 static const bool ENABLE_GPS = true;
@@ -26,9 +31,9 @@ static const bool ENABLE_ELITE4HDI = false;  // GPS Input, AIS Output
 static const bool ENABLE_ICM20948 = true;
 
 const char *ssid = "Schmuddelwetter_24G";
-const char *password = "9568164986244857";
+const char *password = WIFI_PASSWORD_STR;
 const char *ssid_svala = "Svala";
-const char *password_svala = "8641009916";
+const char *password_svala = SVALA_PASSWORD_STR;
 IPAddress local_IP(192, 168, 1, 1);
 const uint16_t BROADCAST_PORT = 2000;
 const uint16_t TCP_SERVER_PORT = 8375;
@@ -72,7 +77,7 @@ void setupApp() {
   WiFi.begin(ssid, password);
   if (WiFi.waitForConnectResult() != WL_CONNECTED) {
     Serial.println("WiFi Station not found. Falling back to AP.");
-    Serial.printf("Wifi AP with ssid '%s'.\n", ssid_svala);
+    Serial.printf("Wifi AP with ssid '%s' and password '%s'.\n", ssid_svala, password_svala);
     WiFi.mode(WIFI_AP);
     WiFi.softAP(ssid_svala, password_svala);
     Serial.printf("Got IP %s\n", WiFi.softAPIP().toString().c_str());
