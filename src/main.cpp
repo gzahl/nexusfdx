@@ -77,7 +77,8 @@ void setupApp() {
   WiFi.begin(ssid, password);
   if (WiFi.waitForConnectResult() != WL_CONNECTED) {
     Serial.println("WiFi Station not found. Falling back to AP.");
-    Serial.printf("Wifi AP with ssid '%s' and password '%s'.\n", ssid_svala, password_svala);
+    Serial.printf("Wifi AP with ssid '%s' and password '%s'.\n", ssid_svala,
+                  password_svala);
     WiFi.mode(WIFI_AP);
     WiFi.softAP(ssid_svala, password_svala);
     Serial.printf("Got IP %s\n", WiFi.softAPIP().toString().c_str());
@@ -212,6 +213,12 @@ void setupApp() {
         .connect_to(new NmeaMessage<double>(MessageType::NMEA_XDR_ROLL))
         ->connect_to(nmeaSentenceReporter);
     icm->data.yaw.connect_to(new NmeaMessage<double>(MessageType::NMEA_HDM))
+        ->connect_to(nmeaSentenceReporter);
+    icm->data.rateOfTurn
+        .connect_to(new LambdaTransform<double, float>(
+            [](double in) { return (float)in; }))
+        ->connect_to(new MovingAverage(5))
+        ->connect_to(new NmeaMessage<float>(MessageType::NMEA_ROT))
         ->connect_to(nmeaSentenceReporter);
   }
 

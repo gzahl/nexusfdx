@@ -1,6 +1,9 @@
 #include "icm20948.h"
 
-Icm20948::Icm20948() {}
+Icm20948::Icm20948() {
+    eulerAngles.yaw = 0.0;
+    eulerAngles.time = millis();
+}
 
 void Icm20948::enable() {
   Serial.println("Enabling icm20948!");
@@ -90,10 +93,18 @@ void Icm20948::enable() {
         quaternion.y = q2;
         quaternion.z = q3;
 
-        EulerAngles eulerAngles = toEuler(quaternion);
+        double yaw0 = eulerAngles.yaw;
+        double time0 = eulerAngles.time;
+
+        eulerAngles = toEuler(quaternion);
+        eulerAngles.time = millis();
+
         data.pitch.emit(-eulerAngles.pitch);
         data.roll.emit(eulerAngles.roll);
         data.yaw.emit(eulerAngles.yaw);
+
+        const double degMillisToDegMinutes = 1.0/60000.;
+        data.rateOfTurn.emit((eulerAngles.yaw - yaw0)/(eulerAngles.time - time0)*degMillisToDegMinutes);
         data.accuracy.emit(dmpData.Quat9.Data.Accuracy);
       }
     }

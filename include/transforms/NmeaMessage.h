@@ -16,7 +16,8 @@ typedef enum {
   NMEA_XDR_PITCH,
   NMEA_XDR_ROLL,
   NMEA_DPT,
-  NMEA_HDM
+  NMEA_HDM,
+  NMEA_ROT
 } MessageType;
 
 /**
@@ -40,6 +41,7 @@ class NmeaMessage : public Transform<T, String> {
   String writeSentenceXDR(char type, char unit, const char* name, T value);
   String writeSentenceDPT(T depth, T offset);
   String writeSentenceHDM(T heading);
+  String writeSentenceROT(T rateOfTurn);
 };
 
 #endif

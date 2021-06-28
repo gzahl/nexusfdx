@@ -18,7 +18,7 @@
  * the ADR jumper is closed the value becomes 0#define AD0_VAL 1
  */
 struct EulerAngles {
-  double roll, pitch, yaw;
+  double roll, pitch, yaw, time;
 };
 
 struct Quaternion {
@@ -29,6 +29,7 @@ struct IcmData {
   ObservableValue<double> pitch;
   ObservableValue<double> roll;
   ObservableValue<double> yaw;
+  ObservableValue<double> rateOfTurn;
   ObservableValue<int16_t> accuracy;
 };
 
@@ -40,6 +41,7 @@ class Icm20948 : Sensor {
 
  private:
   ICM_20948_I2C icm;  // Otherwise create an ICM_20948_I2C object
+  EulerAngles eulerAngles;
   EulerAngles toEuler(Quaternion quaternion);
   const double RAD2DEG = (180.0 / M_PI);
   const double DEG2RAD = (M_PI / 180.0);

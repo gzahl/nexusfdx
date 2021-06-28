@@ -66,6 +66,12 @@ void NmeaMessage<T>::set_input(T input, uint8_t inputChannel) {
         this->emit(writeSentenceHDM(inputs[0]));
       }
     break;
+    case (NMEA_ROT):
+      if (received == 0b1) {
+        received = 0;
+        this->emit(writeSentenceROT(inputs[0]));
+      }
+    break;
   }
 }
 
@@ -106,6 +112,14 @@ String NmeaMessage<T>::writeSentenceHDM(T heading) {
   sprintf(buf, "$%2sHDM,%.1f,M", deviceId, heading);
   return calcChecksum(buf);
 }
+
+template <typename T>
+String NmeaMessage<T>::writeSentenceROT(T rateOfTurn) {
+  char buf[81];
+  sprintf(buf, "$%2sROT,%.1f,A", deviceId, rateOfTurn);
+  return calcChecksum(buf);
+}
+
 
 template <typename T>
 String NmeaMessage<T>::calcChecksum(char* nmea_data) {
