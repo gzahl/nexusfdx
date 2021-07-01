@@ -1,9 +1,6 @@
 #include "icm20948.h"
 
-Icm20948::Icm20948() {
-    eulerAngles.yaw = 0.0;
-    eulerAngles.time = millis();
-}
+Icm20948::Icm20948() { eulerAngles.yaw = 0.0; }
 
 void Icm20948::enable() {
   Serial.println("Enabling icm20948!");
@@ -38,14 +35,23 @@ void Icm20948::enable() {
   success &= (icm.initializeDMP() == ICM_20948_Stat_Ok);
   success &= (icm.enableDMPSensor(INV_ICM20948_SENSOR_ORIENTATION) ==
               ICM_20948_Stat_Ok);
+  success &=
+      (icm.enableDMPSensor(INV_ICM20948_SENSOR_GYROSCOPE) == ICM_20948_Stat_Ok);
+  success &= (icm.enableDMPSensor(INV_ICM20948_SENSOR_LINEAR_ACCELERATION) ==
+              ICM_20948_Stat_Ok);
 
   // Configuring DMP to output data at multiple ODRs:
   // DMP is capable of outputting multiple sensor data at different rates to
   // FIFO. Setting value can be calculated as follows: Value = (DMP running rate
   // / ODR ) - 1 E.g. For a 5Hz ODR rate when DMP is running at 55Hz, value =
   // (55/5) - 1 = 10.
-  success &= (icm.setDMPODRrate(DMP_ODR_Reg_Quat9, 0) ==
-              ICM_20948_Stat_Ok);  // Set to the maximum
+  int fusionrate = 4;
+  success &=
+      (icm.setDMPODRrate(DMP_ODR_Reg_Quat9, fusionrate) == ICM_20948_Stat_Ok);
+  success &= (icm.setDMPODRrate(DMP_ODR_Reg_Gyro_Calibr, fusionrate) ==
+              ICM_20948_Stat_Ok);
+  success &=
+      (icm.setDMPODRrate(DMP_ODR_Reg_Accel, fusionrate) == ICM_20948_Stat_Ok);
 
   success &= (icm.enableFIFO() == ICM_20948_Stat_Ok);
   success &= (icm.enableDMP() == ICM_20948_Stat_Ok);
@@ -64,11 +70,18 @@ void Icm20948::enable() {
       ;  // Do nothing more
   }
 
+  auto gravity = findGravity();
+  SERIAL_PORT.printf("Found gravity: %f, %f, %f\n", gravity.x, gravity.y,
+                     gravity.z);
+  auto down = mmath::Vector<3, double>(0., 0., -1.);
+  auto up = mmath::Vector<3, double>(0., 0., 1.);
+  auto rotateToGravity = rotationBetweenTwoVectors(gravity, down);
+  auto correctToNorth = axisAngleQuaternion(up, mmath::Angles::DegToRad(5.));
+  calibration = correctToNorth * rotateToGravity;
+
   app.onTick([this]() {
     while (available()) {
-      if ((dmpData.header & DMP_header_bitmap_Quat9) >
-          0)  // We have asked for orientation data so we should receive Quat9
-      {
+      if ((dmpData.header & DMP_header_bitmap_Quat9) > 0) {
         // Q0 value is computed from this equation: Q0^2 + Q1^2 + Q2^2 + Q3^2
         // = 1. In case of drift, the sum will not add to 1, therefore,
         // quaternion data need to be corrected with right bias values. The
@@ -79,36 +92,106 @@ void Icm20948::enable() {
         // data.Quat9.Data.Q3, data.Quat9.Data.Accuracy);
 
         // Scale to +/- 1
-        double q1 = ((double)dmpData.Quat9.Data.Q1) /
-                    1073741824.0;  // Convert to double. Divide by 2^30
-        double q2 = ((double)dmpData.Quat9.Data.Q2) /
-                    1073741824.0;  // Convert to double. Divide by 2^30
-        double q3 = ((double)dmpData.Quat9.Data.Q3) /
-                    1073741824.0;  // Convert to double. Divide by 2^30
+        const double scale = 1.0 / pwrtwo(30);
+        double q1 = ((double)dmpData.Quat9.Data.Q1) * scale;
+        double q2 = ((double)dmpData.Quat9.Data.Q2) * scale;
+        double q3 = ((double)dmpData.Quat9.Data.Q3) * scale;
         double q0 = -sqrt(1.0 - ((q1 * q1) + (q2 * q2) + (q3 * q3)));
 
-        Quaternion quaternion;
-        quaternion.w = q0;
-        quaternion.x = q1;
-        quaternion.y = q2;
-        quaternion.z = q3;
+        mmath::Quaternion<double> quaternion(q1, q2, q3, q0);
 
-        double yaw0 = eulerAngles.yaw;
-        double time0 = eulerAngles.time;
+        auto quat_calibrated = calibration * quaternion * conj(calibration);
 
-        eulerAngles = toEuler(quaternion);
-        eulerAngles.time = millis();
+        auto euler = quat_calibrated.ToEulerXYZ();
 
-        data.pitch.emit(-eulerAngles.pitch);
-        data.roll.emit(eulerAngles.roll);
-        data.yaw.emit(eulerAngles.yaw);
+        data.pitch.emit(mmath::Angles::RadToDeg(-euler.x));
+        data.roll.emit(mmath::Angles::RadToDeg(euler.y));
+        data.yaw.emit(mmath::Angles::RadToDeg(euler.z));
 
-        const double degMillisToDegMinutes = 1.0/60000.;
-        data.rateOfTurn.emit((eulerAngles.yaw - yaw0)/(eulerAngles.time - time0)*degMillisToDegMinutes);
+        /*
+        const double degMillisToDegMinutes = 60000.;
+        data.rateOfTurn.emit((eulerAngles.yaw - yaw0) /
+                             (eulerAngles.time - time0) *
+                             degMillisToDegMinutes);
+                             */
         data.accuracy.emit(dmpData.Quat9.Data.Accuracy);
+      }
+
+      if ((dmpData.header & DMP_header_bitmap_Gyro_Calibr) > 0) {
+        const double scale = 1.0 / pwrtwo(15);
+        double gyroX = (double)dmpData.Gyro_Calibr.Data.X * scale;
+        double gyroY = (double)dmpData.Gyro_Calibr.Data.Y * scale;
+        double gyroZ = (double)dmpData.Gyro_Calibr.Data.Z * scale;
+        mmath::Vector<3, double> gyro(gyroX, gyroY, gyroZ);
       }
     }
   });
+}
+
+/**
+ * Calculate quaternion for rotation from vector a to vector b
+ * http://www.euclideanspace.com/maths/algebra/vectors/angleBetween/
+ */
+mmath::Quaternion<double> Icm20948::rotationBetweenTwoVectors(
+    mmath::Vector<3, double> a, mmath::Vector<3, double> b) {
+  double norm = 1.0 / (mmath::Length<double, double>(a) *
+                       mmath::Length<double, double>(b));
+
+  auto c = a * b;
+  auto d = norm * crossProduct(a, b);
+
+  mmath::Quaternion<double> res;
+  res.w = 1.0 + (c.x + c.y + c.z) * norm;
+  res.x = d.x;
+  res.y = d.y;
+  res.z = d.z;
+  return res;
+}
+
+/**
+ * q = cos(a/2) + i ( x * sin(a/2)) + j (y * sin(a/2)) + k ( z * sin(a/2))
+ * https://www.euclideanspace.com/maths/algebra/realNormedAlgebra/quaternions/index.htm
+ */
+mmath::Quaternion<double> Icm20948::axisAngleQuaternion(
+    mmath::Vector<3, double> axis, double angle) {
+  const auto sin2 = sin(angle / 2.);
+  return mmath::Quaternion<double>(cos(angle / 2.), axis.x * sin2,
+                                   axis.y * sin2, axis.z * sin2);
+}
+
+mmath::Vector<3, double> Icm20948::crossProduct(mmath::Vector<3, double> a,
+                                                mmath::Vector<3, double> b) {
+  return mmath::Vector<3, double>(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z,
+                                  a.x * b.y - a.y * b.x);
+}
+
+mmath::Quaternion<double> Icm20948::conj(mmath::Quaternion<double> q) {
+  return mmath::Quaternion<double>(-q.x, -q.y, -q.z, q.w);
+}
+
+mmath::Vector<3, double> Icm20948::findGravity() {
+  Serial.println(
+      "Calibrating gravity vector - keep the sensor still or this might give "
+      "inaccurate results");
+  // Do exponential moving average over a certain time period and wait until
+  // vector settles at around 1g. Takes around 8 seconds. double totalAcc =
+  // sqrt(g_x*g_x + g_y*g_y+ g_z*g_z);
+  float ema = 0.01;
+  // Average the first xxx readings.DMP seems to take a few seconds to settle
+  // down anyhow.
+  int counter = 750;
+  int i = 0;
+  double grav_x = 0, grav_y = 0, grav_z = 0;
+
+  while (available() && i < counter) {
+    if ((dmpData.header & DMP_header_bitmap_Accel) > 0) {
+      grav_x += (float)dmpData.Raw_Accel.Data.X / counter;
+      grav_y += (float)dmpData.Raw_Accel.Data.Y / counter;
+      grav_z += (float)dmpData.Raw_Accel.Data.Z / counter;
+      i++;
+    }
+  }
+  return mmath::Vector<3, double>(grav_x, grav_y, grav_z);
 }
 
 boolean Icm20948::available() {
@@ -125,25 +208,4 @@ boolean Icm20948::available() {
 
   return (icm.status == ICM_20948_Stat_Ok) ||
          (icm.status == ICM_20948_Stat_FIFOMoreDataAvail);
-}
-
-EulerAngles Icm20948::toEuler(Quaternion q) {
-  EulerAngles ret;
-  double sqw = q.w * q.w;
-  double sqx = q.x * q.x;
-  double sqy = q.y * q.y;
-  double sqz = q.z * q.z;
-
-  ret.yaw =
-      atan2(2.0 * (q.x * q.y + q.z * q.w), (sqx - sqy - sqz + sqw)) * RAD2DEG;
-  ret.pitch =
-      atan2(2.0 * (q.y * q.z + q.x * q.w), (-sqx - sqy + sqz + sqw)) * RAD2DEG;
-  double siny = -2.0 * (q.x * q.z - q.y * q.w) / (sqx + sqy + sqz + sqw);
-
-  // prevent NaN and use 90 deg when out of range
-  if (fabs(siny) >= 1.0)
-    ret.roll = copysign(90.0, siny);
-  else
-    ret.roll = asin(siny) * RAD2DEG;
-  return ret;
 }

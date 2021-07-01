@@ -2,9 +2,12 @@
 #define ICM20948_H
 
 #define _USE_MATH_DEFINES
+#include <mmath/mmath.h>
+
 #include <cmath>
 
 #include "ICM_20948.h"
+#include "pwrUtility.hpp"
 #include "sensors/sensor.h"
 #include "system/observablevalue.h"
 
@@ -12,17 +15,8 @@
 
 #define WIRE_PORT Wire
 
-/**
- * The value of the last bit of the I2C address.
- * On the SparkFun 9DoF IMU breakout the default is 1, and when
- * the ADR jumper is closed the value becomes 0#define AD0_VAL 1
- */
 struct EulerAngles {
-  double roll, pitch, yaw, time;
-};
-
-struct Quaternion {
-  double w, x, y, z;
+  double pitch, roll, yaw;
 };
 
 struct IcmData {
@@ -42,11 +36,18 @@ class Icm20948 : Sensor {
  private:
   ICM_20948_I2C icm;  // Otherwise create an ICM_20948_I2C object
   EulerAngles eulerAngles;
-  EulerAngles toEuler(Quaternion quaternion);
-  const double RAD2DEG = (180.0 / M_PI);
-  const double DEG2RAD = (M_PI / 180.0);
-  boolean available();
   icm_20948_DMP_data_t dmpData;
+  mmath::Quaternion<double> calibration;
+  boolean available();
+  mmath::Vector<3, double> findGravity();
+  mmath::Quaternion<double> rotationBetweenTwoVectors(
+      mmath::Vector<3, double> a, mmath::Vector<3, double> b);
+  mmath::Vector<3, double> crossProduct(mmath::Vector<3, double> a,
+                                        mmath::Vector<3, double> b);
+  mmath::Quaternion<double> conj(mmath::Quaternion<double> q);
+
+  mmath::Quaternion<double> axisAngleQuaternion(mmath::Vector<3, double> axis,
+                                                double angle);
 };
 
 #endif
