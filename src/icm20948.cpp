@@ -73,11 +73,15 @@ void Icm20948::enable() {
   auto gravity = findGravity();
   SERIAL_PORT.printf("Found gravity: %f, %f, %f\n", gravity.x, gravity.y,
                      gravity.z);
-  auto down = mmath::Vector<3, double>(0., 0., -1.);
-  auto up = mmath::Vector<3, double>(0., 0., 1.);
+  auto down = mmath::Vector<3, double>(0., 0., 1.);
+  auto up = mmath::Vector<3, double>(0., 0., -1.);
   auto rotateToGravity = rotationBetweenTwoVectors(gravity, down);
   auto correctToNorth = axisAngleQuaternion(up, mmath::Angles::DegToRad(5.));
-  calibration = correctToNorth * rotateToGravity;
+  // calibration = correctToNorth * rotateToGravity;
+  calibration = rotateToGravity;
+  calibration = calibration / calibration.norm();
+  Serial.printf("calibration quaternion: %f %f %f %f\n", calibration.w,
+                calibration.x, calibration.y, calibration.z);
 
   app.onTick([this]() {
     while (available()) {
@@ -98,7 +102,7 @@ void Icm20948::enable() {
         double q3 = ((double)dmpData.Quat9.Data.Q3) * scale;
         double q0 = -sqrt(1.0 - ((q1 * q1) + (q2 * q2) + (q3 * q3)));
 
-        mmath::Quaternion<double> quaternion(q1, q2, q3, q0);
+        mmath::Quaternion<double> quaternion(q0, q1, q2, q3);
 
         auto quat_calibrated = calibration * quaternion * conj(calibration);
 
@@ -166,7 +170,7 @@ mmath::Vector<3, double> Icm20948::crossProduct(mmath::Vector<3, double> a,
 }
 
 mmath::Quaternion<double> Icm20948::conj(mmath::Quaternion<double> q) {
-  return mmath::Quaternion<double>(-q.x, -q.y, -q.z, q.w);
+  return mmath::Quaternion<double>(q.w, -q.x, -q.y, -q.z);
 }
 
 mmath::Vector<3, double> Icm20948::findGravity() {
@@ -176,22 +180,30 @@ mmath::Vector<3, double> Icm20948::findGravity() {
   // Do exponential moving average over a certain time period and wait until
   // vector settles at around 1g. Takes around 8 seconds. double totalAcc =
   // sqrt(g_x*g_x + g_y*g_y+ g_z*g_z);
-  float ema = 0.01;
   // Average the first xxx readings.DMP seems to take a few seconds to settle
   // down anyhow.
   int counter = 750;
   int i = 0;
   double grav_x = 0, grav_y = 0, grav_z = 0;
 
-  while (available() && i < counter) {
-    if ((dmpData.header & DMP_header_bitmap_Accel) > 0) {
-      grav_x += (float)dmpData.Raw_Accel.Data.X / counter;
-      grav_y += (float)dmpData.Raw_Accel.Data.Y / counter;
-      grav_z += (float)dmpData.Raw_Accel.Data.Z / counter;
-      i++;
+  while (i < counter) {
+    if (available()) {
+      if ((dmpData.header & DMP_header_bitmap_Accel) > 0) {
+        grav_x += (float)dmpData.Raw_Accel.Data.X;
+        grav_y += (float)dmpData.Raw_Accel.Data.Y;
+        grav_z += (float)dmpData.Raw_Accel.Data.Z;
+        i++;
+        if (i % (counter / 10) == 0) {
+          Serial.printf("gravity[%i/%i]: %f %f %f\n", i, counter, grav_x / i,
+                        grav_y / i, grav_z / i);
+        }
+      }
+    } else {
+      delay(1);
     }
   }
-  return mmath::Vector<3, double>(grav_x, grav_y, grav_z);
+
+  return mmath::Vector<3, double>(grav_x / i, grav_y / i, grav_z / i);
 }
 
 boolean Icm20948::available() {
