@@ -70,15 +70,21 @@ void Icm20948::enable() {
       ;  // Do nothing more
   }
 
+  
   auto gravity = findGravity();
   SERIAL_PORT.printf("Found gravity: %f, %f, %f\n", gravity.x, gravity.y,
                      gravity.z);
   auto down = mmath::Vector<3, double>(0., 0., 1.);
   auto up = mmath::Vector<3, double>(0., 0., -1.);
   auto rotateToGravity = rotationBetweenTwoVectors(gravity, down);
-  auto correctToNorth = axisAngleQuaternion(up, mmath::Angles::DegToRad(5.));
-  // calibration = correctToNorth * rotateToGravity;
-  calibration = rotateToGravity;
+  mmath::Quaternion<double> correctToNorth(up, mmath::Angles::DegToRad(100.));
+  Serial.printf("rotateToGravity quaternion: %f %f %f %f\n", rotateToGravity.w,
+                rotateToGravity.x, rotateToGravity.y, rotateToGravity.z);
+  Serial.printf("correctToNorth quaternion: %f %f %f %f\n", correctToNorth.w,
+                correctToNorth.x, correctToNorth.y, correctToNorth.z);
+
+  calibration = correctToNorth * rotateToGravity;
+  // calibration = rotateToGravity;
   calibration = calibration / calibration.norm();
   Serial.printf("calibration quaternion: %f %f %f %f\n", calibration.w,
                 calibration.x, calibration.y, calibration.z);
@@ -150,17 +156,6 @@ mmath::Quaternion<double> Icm20948::rotationBetweenTwoVectors(
   res.y = d.y;
   res.z = d.z;
   return res;
-}
-
-/**
- * q = cos(a/2) + i ( x * sin(a/2)) + j (y * sin(a/2)) + k ( z * sin(a/2))
- * https://www.euclideanspace.com/maths/algebra/realNormedAlgebra/quaternions/index.htm
- */
-mmath::Quaternion<double> Icm20948::axisAngleQuaternion(
-    mmath::Vector<3, double> axis, double angle) {
-  const auto sin2 = sin(angle / 2.);
-  return mmath::Quaternion<double>(cos(angle / 2.), axis.x * sin2,
-                                   axis.y * sin2, axis.z * sin2);
 }
 
 mmath::Vector<3, double> Icm20948::crossProduct(mmath::Vector<3, double> a,
