@@ -70,14 +70,13 @@ void Icm20948::enable() {
       ;  // Do nothing more
   }
 
-  
   auto gravity = findGravity();
   SERIAL_PORT.printf("Found gravity: %f, %f, %f\n", gravity.x, gravity.y,
                      gravity.z);
   auto down = mmath::Vector<3, double>(0., 0., 1.);
   auto up = mmath::Vector<3, double>(0., 0., -1.);
   auto rotateToGravity = rotationBetweenTwoVectors(gravity, down);
-  mmath::Quaternion<double> correctToNorth(up, mmath::Angles::DegToRad(100.));
+  mmath::Quaternion<double> correctToNorth(up, mmath::Angles::DegToRad(0.));
   Serial.printf("rotateToGravity quaternion: %f %f %f %f\n", rotateToGravity.w,
                 rotateToGravity.x, rotateToGravity.y, rotateToGravity.z);
   Serial.printf("correctToNorth quaternion: %f %f %f %f\n", correctToNorth.w,
@@ -110,7 +109,8 @@ void Icm20948::enable() {
 
         mmath::Quaternion<double> quaternion(q0, q1, q2, q3);
 
-        auto quat_calibrated = calibration * quaternion * conj(calibration);
+        // auto quat_calibrated = calibration * quaternion * conj(calibration);
+        auto quat_calibrated = calibration * quaternion;
 
         auto euler = quat_calibrated.ToEulerXYZ();
 
@@ -179,18 +179,24 @@ mmath::Vector<3, double> Icm20948::findGravity() {
   // down anyhow.
   int counter = 750;
   int i = 0;
-  double grav_x = 0, grav_y = 0, grav_z = 0;
+  mmath::Vector<3, double> mean(0., 0., 0.), m2(0., 0., 0), delta1, delta2,
+      grav;
 
   while (i < counter) {
     if (available()) {
       if ((dmpData.header & DMP_header_bitmap_Accel) > 0) {
-        grav_x += (float)dmpData.Raw_Accel.Data.X;
-        grav_y += (float)dmpData.Raw_Accel.Data.Y;
-        grav_z += (float)dmpData.Raw_Accel.Data.Z;
+        grav.x = (float)dmpData.Raw_Accel.Data.X;
+        grav.y = (float)dmpData.Raw_Accel.Data.Y;
+        grav.z = (float)dmpData.Raw_Accel.Data.Z;
         i++;
+        delta1 = grav - mean;
+        mean += delta1 / (double)i;
+        delta2 = grav - mean;
+        m2 += delta1 * delta2;
         if (i % (counter / 10) == 0) {
-          Serial.printf("gravity[%i/%i]: %f %f %f\n", i, counter, grav_x / i,
-                        grav_y / i, grav_z / i);
+          Serial.printf("gravity[%i/%i]: %f +- %f, %f +- %f, %f +- %f\n", i,
+                        counter, mean.x, sqrt(m2.x / i), mean.y, sqrt(m2.y / i),
+                        mean.z, sqrt(m2.z / i));
         }
       }
     } else {
@@ -198,7 +204,7 @@ mmath::Vector<3, double> Icm20948::findGravity() {
     }
   }
 
-  return mmath::Vector<3, double>(grav_x / i, grav_y / i, grav_z / i);
+  return mean;
 }
 
 boolean Icm20948::available() {
