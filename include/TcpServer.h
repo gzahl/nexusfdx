@@ -15,7 +15,7 @@ class TcpServer : public NetworkPublisher {
 
  private:
   AsyncServer* asyncServer;
-  static std::unordered_set<AsyncClient*> asyncClients;
+  std::unordered_set<AsyncClient *> asyncClients;
 };
 
 #endif

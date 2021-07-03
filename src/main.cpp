@@ -59,7 +59,7 @@ int bufCapacity = 80;
 int isrBufCapacity = 20;
 
 NetworkPublisher *networkPublisher;
-NetworkPublisher *debugPublisher = new UdpServer(BROADCAST_PORT + 1);
+NetworkPublisher *debugPublisher;
 
 SoftwareSerial *swSerial[8];
 StringProducer *stringProducer;
@@ -94,6 +94,8 @@ void setupApp() {
 
   // networkPublisher = new UdpServer(BROADCAST_PORT);
   networkPublisher = new TcpServer(TCP_SERVER_PORT);
+  //debugPublisher = new UdpServer(BROADCAST_PORT + 1);
+  debugPublisher = new TcpServer(TCP_SERVER_PORT + 1);
 
   // swSerial.begin(9600, SWSERIAL_8S1, GPIO_NUM_21);
   // pinMode(GPIO_NUM_26, INPUT);

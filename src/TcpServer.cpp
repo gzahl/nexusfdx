@@ -1,20 +1,37 @@
 #include "TcpServer.h"
 
-std::unordered_set<AsyncClient *> TcpServer::asyncClients;
-
 TcpServer::TcpServer(uint16_t port) {
   asyncServer = new AsyncServer(port);
   Serial.printf("Started TCP Server on port: %u\n", port);
 
   asyncServer->onClient(
-      [](void *arg, AsyncClient *client) {
-        TcpServer::asyncClients.insert(client);
-        client->onDisconnect([](void *arg2, AsyncClient *disconnectingClient) {
-          TcpServer::asyncClients.erase(disconnectingClient);
-        });
+      [](void *arg1, AsyncClient *client) {
+        std::unordered_set<AsyncClient *> *asyncClients_onClient =
+            static_cast<std::unordered_set<AsyncClient *> *>(arg1);
 
-        Serial.printf("new client has been connected to server, ip: %s\n",
-                      client->remoteIP().toString().c_str());
+        asyncClients_onClient->insert(client);
+
+        client->onDisconnect(
+            [](void *arg2, AsyncClient *disconnectingClient) {
+              std::unordered_set<AsyncClient *> *asyncClients_onDisconnect =
+                  static_cast<std::unordered_set<AsyncClient *> *>(arg2);
+              Serial.printf(
+                  "Client has disconnected from port %u, ip: %s, No of "
+                  "clients: "
+                  "%u\n",
+                  disconnectingClient->localPort(),
+                  disconnectingClient->remoteIP().toString().c_str(),
+                  asyncClients_onDisconnect->size() - 1);
+              asyncClients_onDisconnect->erase(disconnectingClient);
+            },
+            arg1);
+
+        Serial.printf(
+            "New client has been connected to server on port %u, ip: %s, No of "
+            "clients: %u\n",
+            client->localPort(), client->remoteIP().toString().c_str(),
+            asyncClients_onClient->size());
+
         /*
         // register events
         client->onData(&handleData, NULL);
@@ -22,12 +39,12 @@ TcpServer::TcpServer(uint16_t port) {
         client->onDisconnect(&handleDisconnect, NULL);
         client->onTimeout(&handleTimeOut, NULL);*/
       },
-      asyncServer);
+      static_cast<void *>(&asyncClients));
   asyncServer->begin();
 }
 
 void TcpServer::send(const char *data) {
-  for (AsyncClient *client : TcpServer::asyncClients) {
+  for (AsyncClient *client : asyncClients) {
     client->write(data);
   }
 }
