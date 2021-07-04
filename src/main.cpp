@@ -28,7 +28,7 @@ static const bool ENABLE_NMEA0 = true;       // Radio: AIS Input
 static const bool ENABLE_NMEA1 = true;       // Radio: DSC Input, GPS Output
 static const bool ENABLE_NMEA2 = true;       // Nexus FDX
 static const bool ENABLE_ELITE4HDI = false;  // GPS Input, AIS Output
-static const bool ENABLE_ICM20948 = true;
+static const bool ENABLE_ICM20948 = false;
 
 const char *ssid = "Schmuddelwetter_24G";
 const char *password = WIFI_PASSWORD_STR;
