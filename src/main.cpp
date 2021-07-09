@@ -28,7 +28,7 @@ static const bool ENABLE_NMEA0 = true;       // Radio: AIS Input
 static const bool ENABLE_NMEA1 = true;       // Radio: DSC Input, GPS Output
 static const bool ENABLE_NMEA2 = true;       // Nexus FDX
 static const bool ENABLE_ELITE4HDI = false;  // GPS Input, AIS Output
-static const bool ENABLE_ICM20948 = false;
+static const bool ENABLE_ICM20948 = true;
 
 const char *ssid = "Schmuddelwetter_24G";
 const char *password = WIFI_PASSWORD_STR;
@@ -52,8 +52,8 @@ static const gpio_num_t NMEA5_RX = GPIO_NUM_17;
 static const gpio_num_t NMEA5_TX = GPIO_NUM_4;
 static const gpio_num_t NMEA6_RX = GPIO_NUM_0;
 static const gpio_num_t NMEA6_TX = GPIO_NUM_16;
-static const gpio_num_t GPS_RX = GPIO_NUM_19;
-static const gpio_num_t GPS_TX = GPIO_NUM_23;
+static const gpio_num_t GPS_RX = GPIO_NUM_23;
+static const gpio_num_t GPS_TX = GPIO_NUM_19;
 
 int bufCapacity = 80;
 int isrBufCapacity = 20;
