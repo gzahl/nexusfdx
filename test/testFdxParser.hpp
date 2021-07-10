@@ -66,4 +66,14 @@ void testDepth() {
   auto fdxParser = parse("07 18 01 00 1E");
   TEST_ASSERT_EQUAL(FdxType::DEPTH, fdxParser.data.type);
   TEST_ASSERT_EQUAL_FLOAT(2.4, fdxParser.data.depth);
+
+  fdxParser = parse("07 EA 06 00 EB");
+  TEST_ASSERT_EQUAL(FdxType::DEPTH, fdxParser.data.type);
+  TEST_ASSERT_EQUAL_FLOAT(23.4, fdxParser.data.depth);
+}
+
+void testSpeed() {
+  auto fdxParser = parse("11 FB FF 15");
+  TEST_ASSERT_EQUAL(FdxType::SPEED, fdxParser.data.type);
+  TEST_ASSERT_EQUAL_FLOAT(2.51, fdxParser.data.speed);
 }

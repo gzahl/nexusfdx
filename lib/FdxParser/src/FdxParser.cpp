@@ -62,8 +62,9 @@ void FdxParser::parse(unsigned char *msg, unsigned char len) {
         data.voltage = ((float)payload[0]) * 0.1;
         break;
       case (17):
-        // Always 0x00s 0x00?
+        // Always 0x00s 0x00? Maybe boatspeed!
         if (payloadLen != 2) return;
+        data.speed = ((float)payload[0]) * 0.01;
         break;
       case (18):
         // Wind direction & speed + unknown byte
@@ -115,7 +116,7 @@ void FdxParser::readData(unsigned char messageId, unsigned char *payload,
 }
 
 void FdxParser::readWind(uint8_t *payload, float &angle, float &speed) {
-  if (payload[0] == 0x0 && payload[1] == 0x0 && payload[2] == 0x0 &&
+  if (payload[0] == 0ux0 && payload[1] == 0x0 && payload[2] == 0x0 &&
       payload[3] == 0x20) {
     // No wind, standing still
     // Serial.printf("No wind\n");
@@ -124,7 +125,7 @@ void FdxParser::readWind(uint8_t *payload, float &angle, float &speed) {
       (uint16_t)(payload[1]) << 8 | (uint16_t)(payload[2]);
   uint8_t angleByte = payload[3];
   angle = (float)angleByte * 360. / 255.;
-  speed = (float)windspeedBytes * 1.e-2 * 1.94;
+  speed = (float)windspeedBytes * 1.e-2 * 1.94384; // m/s -> kts
 }
 
 void FdxParser::readMsg112(uint8_t *payload) {

@@ -11,6 +11,7 @@ int main(int argc, char** argv) {
   RUN_TEST(testTemperature);
   RUN_TEST(testVoltage);
   RUN_TEST(testDepth);
+  RUN_TEST(testSpeed);
 
   RUN_TEST(testPwrUtility);
 
