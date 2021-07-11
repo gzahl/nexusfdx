@@ -1,10 +1,12 @@
 #include <Arduino.h>
+#include <ArduinoOTA.h>
 #include <ESPmDNS.h>
 #include <SoftwareSerial.h>
 #include <WiFi.h>
 
 #include "FdxSource.h"
 #include "NmeaSentenceSource.h"
+#include "RemoteDebug.h"
 #include "TcpServer.h"
 #include "UdpServer.h"
 #include "icm20948.h"
@@ -21,6 +23,8 @@
 #define WIFI_PASSWORD_STR STR(WIFI_PASSWORD)
 #define SVALA_PASSWORD_STR STR(SVALA_PASSWORD)
 
+#define HOST_NAME "svala"
+
 void configureUbloxM8Gps();
 
 static const bool ENABLE_GPS = true;
@@ -28,7 +32,7 @@ static const bool ENABLE_NMEA0 = true;       // Radio: AIS Input
 static const bool ENABLE_NMEA1 = true;       // Radio: DSC Input, GPS Output
 static const bool ENABLE_NMEA2 = true;       // Nexus FDX
 static const bool ENABLE_ELITE4HDI = false;  // GPS Input, AIS Output
-static const bool ENABLE_ICM20948 = true;
+static const bool ENABLE_ICM20948 = false;
 
 const char *ssid = "Schmuddelwetter_24G";
 const char *password = WIFI_PASSWORD_STR;
@@ -64,6 +68,10 @@ NetworkPublisher *debugPublisher;
 SoftwareSerial *swSerial[8];
 StringProducer *stringProducer;
 
+#ifndef DEBUG_DISABLED
+RemoteDebug Debug;
+#endif
+
 void setupApp() {
   Serial.begin(115200);
   Serial.printf("\nHello, starting now..\n");
@@ -87,22 +95,37 @@ void setupApp() {
     Serial.printf("Got IP %s\n", WiFi.localIP().toString().c_str());
   }
 
-  if (!MDNS.begin("svala")) {
-    Serial.println("Error starting mDNS");
-    return;
-  }
+  ArduinoOTA.setHostname(HOST_NAME);
+  ArduinoOTA.setMdnsEnabled(true);
+  ArduinoOTA.begin();
+
+#ifndef DEBUG_DISABLED
+  MDNS.addService("telnet", "tcp",
+                  23);     // Telnet server of RemoteDebug, register as telnet
+  Debug.begin(HOST_NAME);  // Initialize the WiFi server
+  Debug.setResetCmdEnabled(true);  // Enable the reset command
+  Debug.showProfiler(
+      true);  // Profiler (Good to measure times, to optimize codes)
+  Debug.showColors(true);  // Colors
+#endif
 
   // networkPublisher = new UdpServer(BROADCAST_PORT);
   networkPublisher = new TcpServer(TCP_SERVER_PORT);
-  //debugPublisher = new UdpServer(BROADCAST_PORT + 1);
+  // debugPublisher = new UdpServer(BROADCAST_PORT + 1);
   debugPublisher = new TcpServer(TCP_SERVER_PORT + 1);
 
   // swSerial.begin(9600, SWSERIAL_8S1, GPIO_NUM_21);
   // pinMode(GPIO_NUM_26, INPUT);
   // pinMode(GPIO_NUM_18, OUTPUT);
 
+  app.onTick([]() {
+    Debug.handle();
+    ArduinoOTA.handle();
+  });
+
   auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
     // Serial.print(msg);
+    rdebugV("%s", msg);
     networkPublisher->send(msg.c_str());
   });
 
@@ -224,16 +247,14 @@ void setupApp() {
         ->connect_to(nmeaSentenceReporter);
   }
 
-  /*
   stringProducer = new StringProducer();
   stringProducer->connect_to(nmeaSentenceReporter);
   app.onRepeat(1000, []() {
     char buf[100];
-    //sprintf(buf, "Ping %lu\n", millis());
-    sprintf(buf, "$GPGLL,3751.65,S,14507.36,E*77\r\n");
+    sprintf(buf, "Ping %lu\n", millis());
+    // sprintf(buf, "$GPGLL,3751.65,S,14507.36,E*77\r\n");
     stringProducer->emit(buf);
   });
-  */
 
   Enable::enable_all();
 }

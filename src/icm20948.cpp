@@ -74,7 +74,6 @@ void Icm20948::enable() {
   SERIAL_PORT.printf("Found gravity: %f, %f, %f\n", gravity.x, gravity.y,
                      gravity.z);
   auto down = mmath::Vector<3, double>(0., 0., 1.);
-  auto up = mmath::Vector<3, double>(0., 0., -1.);
   auto rotateToGravity = rotationBetweenTwoVectors(gravity, down);
   mmath::Quaternion<double> correctToNorth(down, mmath::Angles::DegToRad(274.-360-16.));
   Serial.printf("rotateToGravity quaternion: %f %f %f %f\n", rotateToGravity.w,
