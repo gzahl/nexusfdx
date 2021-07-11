@@ -1,9 +1,9 @@
-#include "icm20948.h"
+#include "Icm20948.h"
 
 Icm20948::Icm20948() { eulerAngles.yaw = 0.0; }
 
 void Icm20948::enable() {
-  Serial.println("Enabling icm20948!");
+  debugI("Enabling icm20948!");
 
   WIRE_PORT.begin();
   WIRE_PORT.setClock(400000);
@@ -11,26 +11,18 @@ void Icm20948::enable() {
   // Uncomment this line to enable helpful debug messages on Serial
   // icm.enableDebugging();
 
-  bool initialized = false;
-  while (!initialized) {
-    // Initialize the ICM-20948
-    // If the DMP is enabled, .begin performs a minimal startup. We need to
-    // configure the sample mode etc. manually.
-    icm.begin(WIRE_PORT, 1);
-
-    SERIAL_PORT.print(F("Initialization of the sensor returned: "));
-    SERIAL_PORT.println(icm.statusString());
-    if (icm.status != ICM_20948_Stat_Ok) {
-      SERIAL_PORT.println(F("Trying again..."));
-      delay(500);
-    } else {
-      initialized = true;
-    }
-  }
-
-  SERIAL_PORT.println(F("Device connected!"));
-
   bool success = true;
+  // Initialize the ICM-20948
+  // If the DMP is enabled, .begin performs a minimal startup. We need to
+  // configure the sample mode etc. manually.
+  icm.begin(WIRE_PORT, 1);
+  if (icm.status != ICM_20948_Stat_Ok) {
+    debugE("Initialization of the icm20948 failed with: %s",
+           icm.statusString());
+    success = false;
+  } else {
+    debugI("Device connected!");
+  }
 
   success &= (icm.initializeDMP() == ICM_20948_Stat_Ok);
   success &= (icm.enableDMPSensor(INV_ICM20948_SENSOR_ORIENTATION) ==
@@ -60,81 +52,82 @@ void Icm20948::enable() {
 
   // Check success
   if (success) {
-    SERIAL_PORT.println(F("DMP enabled!"));
+    debugI("DMP enabled!");
   } else {
-    SERIAL_PORT.println(F("Enable DMP failed!"));
-    SERIAL_PORT.println(
-        F("Please check that you have uncommented line 29 (#define "
-          "ICM_20948_USE_DMP) in ICM_20948_C.h..."));
-    while (1)
-      ;  // Do nothing more
+    debugE("Enable DMP failed!");
+    debugE(
+        "Please check that you have uncommented line 29 (#define "
+        "ICM_20948_USE_DMP) in ICM_20948_C.h...");
   }
 
-  auto gravity = findGravity();
-  SERIAL_PORT.printf("Found gravity: %f, %f, %f\n", gravity.x, gravity.y,
-                     gravity.z);
-  auto down = mmath::Vector<3, double>(0., 0., 1.);
-  auto rotateToGravity = rotationBetweenTwoVectors(gravity, down);
-  mmath::Quaternion<double> correctToNorth(down, mmath::Angles::DegToRad(274.-360-16.));
-  Serial.printf("rotateToGravity quaternion: %f %f %f %f\n", rotateToGravity.w,
-                rotateToGravity.x, rotateToGravity.y, rotateToGravity.z);
-  Serial.printf("correctToNorth quaternion: %f %f %f %f\n", correctToNorth.w,
-                correctToNorth.x, correctToNorth.y, correctToNorth.z);
+  if (success) {
+    auto gravity = findGravity();
+    debugI("Found gravity: %f, %f, %f", gravity.x, gravity.y, gravity.z);
+    auto down = mmath::Vector<3, double>(0., 0., 1.);
+    auto rotateToGravity = rotationBetweenTwoVectors(gravity, down);
+    mmath::Quaternion<double> correctToNorth(
+        down, mmath::Angles::DegToRad(274. - 360 - 16.));
+    debugD("rotateToGravity quaternion: %f %f %f %f", rotateToGravity.w,
+           rotateToGravity.x, rotateToGravity.y, rotateToGravity.z);
+    debugD("correctToNorth quaternion: %f %f %f %f", correctToNorth.w,
+           correctToNorth.x, correctToNorth.y, correctToNorth.z);
 
-  calibration = correctToNorth * rotateToGravity;
-  // calibration = rotateToGravity;
-  calibration = calibration / calibration.norm();
-  Serial.printf("calibration quaternion: %f %f %f %f\n", calibration.w,
-                calibration.x, calibration.y, calibration.z);
+    calibration = correctToNorth * rotateToGravity;
+    // calibration = rotateToGravity;
+    calibration = calibration / calibration.norm();
+    debugD("calibration quaternion: %f %f %f %f", calibration.w, calibration.x,
+           calibration.y, calibration.z);
 
-  app.onTick([this]() {
-    while (available()) {
-      if ((dmpData.header & DMP_header_bitmap_Quat9) > 0) {
-        // Q0 value is computed from this equation: Q0^2 + Q1^2 + Q2^2 + Q3^2
-        // = 1. In case of drift, the sum will not add to 1, therefore,
-        // quaternion data need to be corrected with right bias values. The
-        // quaternion data is scaled by 2^30.
+    app.onTick([this]() {
+      while (available()) {
+        if ((dmpData.header & DMP_header_bitmap_Quat9) > 0) {
+          // Q0 value is computed from this equation: Q0^2 + Q1^2 + Q2^2 + Q3^2
+          // = 1. In case of drift, the sum will not add to 1, therefore,
+          // quaternion data need to be corrected with right bias values. The
+          // quaternion data is scaled by 2^30.
 
-        // SERIAL_PORT.printf("Quat9 data is: Q1:%ld Q2:%ld Q3:%ld
-        // Accuracy:%d\r\n", data.Quat9.Data.Q1, data.Quat9.Data.Q2,
-        // data.Quat9.Data.Q3, data.Quat9.Data.Accuracy);
+          // SERIAL_PORT.printf("Quat9 data is: Q1:%ld Q2:%ld Q3:%ld
+          // Accuracy:%d\r\n", data.Quat9.Data.Q1, data.Quat9.Data.Q2,
+          // data.Quat9.Data.Q3, data.Quat9.Data.Accuracy);
 
-        // Scale to +/- 1
-        const double scale = 1.0 / pwrtwo(30);
-        double q1 = ((double)dmpData.Quat9.Data.Q1) * scale;
-        double q2 = ((double)dmpData.Quat9.Data.Q2) * scale;
-        double q3 = ((double)dmpData.Quat9.Data.Q3) * scale;
-        double q0 = -sqrt(1.0 - ((q1 * q1) + (q2 * q2) + (q3 * q3)));
+          // Scale to +/- 1
+          const double scale = 1.0 / pwrtwo(30);
+          double q1 = ((double)dmpData.Quat9.Data.Q1) * scale;
+          double q2 = ((double)dmpData.Quat9.Data.Q2) * scale;
+          double q3 = ((double)dmpData.Quat9.Data.Q3) * scale;
+          double q0 = -sqrt(1.0 - ((q1 * q1) + (q2 * q2) + (q3 * q3)));
 
-        mmath::Quaternion<double> quaternion(q0, q1, q2, q3);
+          mmath::Quaternion<double> quaternion(q0, q1, q2, q3);
 
-        // auto quat_calibrated = calibration * quaternion * conj(calibration);
-        auto quat_calibrated = calibration * quaternion;
+          // auto quat_calibrated = calibration * quaternion *
+          // conj(calibration);
+          auto quat_calibrated = calibration * quaternion;
 
-        auto euler = quat_calibrated.ToEulerXYZ();
+          auto euler = quat_calibrated.ToEulerXYZ();
 
-        data.pitch.emit(mmath::Angles::RadToDeg(-euler.x));
-        data.roll.emit(mmath::Angles::RadToDeg(euler.y));
-        data.yaw.emit(mmath::Angles::RadToDeg(euler.z));
+          data.pitch.emit(mmath::Angles::RadToDeg(-euler.x));
+          data.roll.emit(mmath::Angles::RadToDeg(euler.y));
+          data.yaw.emit(mmath::Angles::RadToDeg(euler.z));
 
-        /*
-        const double degMillisToDegMinutes = 60000.;
-        data.rateOfTurn.emit((eulerAngles.yaw - yaw0) /
-                             (eulerAngles.time - time0) *
-                             degMillisToDegMinutes);
-                             */
-        data.accuracy.emit(dmpData.Quat9.Data.Accuracy);
+          /*
+          const double degMillisToDegMinutes = 60000.;
+          data.rateOfTurn.emit((eulerAngles.yaw - yaw0) /
+                               (eulerAngles.time - time0) *
+                               degMillisToDegMinutes);
+                               */
+          data.accuracy.emit(dmpData.Quat9.Data.Accuracy);
+        }
+
+        if ((dmpData.header & DMP_header_bitmap_Gyro_Calibr) > 0) {
+          const double scale = 1.0 / pwrtwo(15);
+          double gyroX = (double)dmpData.Gyro_Calibr.Data.X * scale;
+          double gyroY = (double)dmpData.Gyro_Calibr.Data.Y * scale;
+          double gyroZ = (double)dmpData.Gyro_Calibr.Data.Z * scale;
+          mmath::Vector<3, double> gyro(gyroX, gyroY, gyroZ);
+        }
       }
-
-      if ((dmpData.header & DMP_header_bitmap_Gyro_Calibr) > 0) {
-        const double scale = 1.0 / pwrtwo(15);
-        double gyroX = (double)dmpData.Gyro_Calibr.Data.X * scale;
-        double gyroY = (double)dmpData.Gyro_Calibr.Data.Y * scale;
-        double gyroZ = (double)dmpData.Gyro_Calibr.Data.Z * scale;
-        mmath::Vector<3, double> gyro(gyroX, gyroY, gyroZ);
-      }
-    }
-  });
+    });
+  }
 }
 
 /**
@@ -168,7 +161,7 @@ mmath::Quaternion<double> Icm20948::conj(mmath::Quaternion<double> q) {
 }
 
 mmath::Vector<3, double> Icm20948::findGravity() {
-  Serial.println(
+  debugI(
       "Calibrating gravity vector - keep the sensor still or this might give "
       "inaccurate results");
   // Do exponential moving average over a certain time period and wait until
@@ -193,9 +186,9 @@ mmath::Vector<3, double> Icm20948::findGravity() {
         delta2 = grav - mean;
         m2 += delta1 * delta2;
         if (i % (counter / 10) == 0) {
-          Serial.printf("gravity[%i/%i]: %f +- %f, %f +- %f, %f +- %f\n", i,
-                        counter, mean.x, sqrt(m2.x / i), mean.y, sqrt(m2.y / i),
-                        mean.z, sqrt(m2.z / i));
+          debugD("gravity[%i/%i]: %f +- %f, %f +- %f, %f +- %f", i, counter,
+                 mean.x, sqrt(m2.x / i), mean.y, sqrt(m2.y / i), mean.z,
+                 sqrt(m2.z / i));
         }
       }
     } else {

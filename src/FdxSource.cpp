@@ -67,9 +67,9 @@ unsigned char FdxSource::reverse(unsigned char b) {
 
 void FdxSource::printMessage(unsigned char *msg, unsigned char msglen) {
   for (unsigned char i = 0; i < msglen; i++) {
-    Serial.printf("0x%x ", msg[i]);
+    rdebugV("0x%x ", msg[i]);
   }
-  Serial.printf("\n");
+  debugV("");
 }
 
 void FdxSource::emitRawMessage(unsigned char *msg, unsigned char msglen) {

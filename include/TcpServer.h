@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include <AsyncTCP.h>
+#include "sensesp.h"
 
 #include <unordered_set>
 

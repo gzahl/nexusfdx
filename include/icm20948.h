@@ -10,8 +10,7 @@
 #include "pwrUtility.hpp"
 #include "sensors/sensor.h"
 #include "system/observablevalue.h"
-
-#define SERIAL_PORT Serial
+#include "sensesp.h"
 
 #define WIRE_PORT Wire
 

@@ -4,13 +4,12 @@
 #include <SoftwareSerial.h>
 #include <WiFi.h>
 
+#include "sensesp.h"
 #include "FdxSource.h"
 #include "NmeaSentenceSource.h"
-#include "RemoteDebug.h"
 #include "TcpServer.h"
 #include "UdpServer.h"
 #include "icm20948.h"
-#include "sensesp.h"
 #include "system/lambda_consumer.h"
 #include "transforms/NmeaMessage.h"
 #include "transforms/NmeaMessage.t.hpp"
@@ -32,13 +31,12 @@ static const bool ENABLE_NMEA0 = true;       // Radio: AIS Input
 static const bool ENABLE_NMEA1 = true;       // Radio: DSC Input, GPS Output
 static const bool ENABLE_NMEA2 = true;       // Nexus FDX
 static const bool ENABLE_ELITE4HDI = false;  // GPS Input, AIS Output
-static const bool ENABLE_ICM20948 = false;
+static const bool ENABLE_ICM20948 = true;
 
 const char *ssid = "Schmuddelwetter_24G";
 const char *password = WIFI_PASSWORD_STR;
 const char *ssid_svala = "Svala";
 const char *password_svala = SVALA_PASSWORD_STR;
-IPAddress local_IP(192, 168, 1, 1);
 const uint16_t BROADCAST_PORT = 2000;
 const uint16_t TCP_SERVER_PORT = 8375;
 
@@ -95,9 +93,21 @@ void setupApp() {
     Serial.printf("Got IP %s\n", WiFi.localIP().toString().c_str());
   }
 
+  
+#ifndef DEBUG_DISABLED
+  MDNS.addService("telnet", "tcp",
+                  23);     // Telnet server of RemoteDebug, register as telnet
+  Debug.begin(HOST_NAME, RemoteDebug::DEBUG);  // Initialize the WiFi server
+  Debug.setResetCmdEnabled(true);  // Enable the reset command
+  Debug.showProfiler(
+      false);  // Profiler (Good to measure times, to optimize codes)
+  Debug.showTime(true);
+  Debug.showColors(true);  // Colors
+  Debug.setSerialEnabled(false);
+#endif
+
   ArduinoOTA.setHostname(HOST_NAME);
   ArduinoOTA.setMdnsEnabled(true);
-
 
   ArduinoOTA.onStart([]() {
     String type;
@@ -107,7 +117,7 @@ void setupApp() {
       type = "filesystem";
 
     // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-    debugI("OTA start updating " + type);
+    debugI("OTA start updating %s", type);
   });
   ArduinoOTA.onEnd([]() {
     debugI("\nOTA End");
@@ -125,17 +135,7 @@ void setupApp() {
   });
   ArduinoOTA.begin();
 
-#ifndef DEBUG_DISABLED
-  MDNS.addService("telnet", "tcp",
-                  23);     // Telnet server of RemoteDebug, register as telnet
-  Debug.begin(HOST_NAME);  // Initialize the WiFi server
-  Debug.setResetCmdEnabled(true);  // Enable the reset command
-  Debug.showProfiler(
-      true);  // Profiler (Good to measure times, to optimize codes)
-  Debug.showColors(true);  // Colors
-#endif
-
-  // networkPublisher = new UdpServer(BROADCAST_PORT);
+  // networkPublisher = new UdpServer(BROADCAST_PORT);s
   networkPublisher = new TcpServer(TCP_SERVER_PORT);
   // debugPublisher = new UdpServer(BROADCAST_PORT + 1);
   debugPublisher = new TcpServer(TCP_SERVER_PORT + 1);
@@ -151,7 +151,7 @@ void setupApp() {
 
   auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
     // Serial.print(msg);
-    rdebugV("%s", msg);
+    rdebugV("%s", msg.c_str());
     networkPublisher->send(msg.c_str());
   });
 
@@ -277,8 +277,8 @@ void setupApp() {
   stringProducer->connect_to(nmeaSentenceReporter);
   app.onRepeat(1000, []() {
     char buf[100];
-    sprintf(buf, "Ping %lu\n", millis());
-    // sprintf(buf, "$GPGLL,3751.65,S,14507.36,E*77\r\n");
+    //sprintf(buf, "Ping %lu\n", millis());
+    sprintf(buf, "$GPGLL,3751.65,S,14507.36,E*77\r\n");
     stringProducer->emit(buf);
   });
 

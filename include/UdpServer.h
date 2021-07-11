@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include "AsyncUDP.h"
 #include "NetworkPublisher.h"
+#include "sensesp.h"
 
 class UdpServer : public NetworkPublisher {
  public:

@@ -11,7 +11,7 @@ NmeaSentenceSource::NmeaSentenceSource(Stream *rx_stream) : Sensor(), ValueProdu
 
 void NmeaSentenceSource::enable() {
   // enable reading the serial port
-  Serial.println("Enabling NmeaSentenceSource!");
+  debugI("Enabling NmeaSentenceSource!");
   app.onAvailable(*rx_stream_, [this]() {
     while (rx_stream_->available()) {
       char c = rx_stream_->read();
