@@ -116,7 +116,7 @@ void FdxParser::readData(unsigned char messageId, unsigned char *payload,
 }
 
 void FdxParser::readWind(uint8_t *payload, float &angle, float &speed) {
-  if (payload[0] == 0ux0 && payload[1] == 0x0 && payload[2] == 0x0 &&
+  if (payload[0] == 0x0 && payload[1] == 0x0 && payload[2] == 0x0 &&
       payload[3] == 0x20) {
     // No wind, standing still
     // Serial.printf("No wind\n");

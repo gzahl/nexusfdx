@@ -76,7 +76,7 @@ void Icm20948::enable() {
   auto down = mmath::Vector<3, double>(0., 0., 1.);
   auto up = mmath::Vector<3, double>(0., 0., -1.);
   auto rotateToGravity = rotationBetweenTwoVectors(gravity, down);
-  mmath::Quaternion<double> correctToNorth(up, mmath::Angles::DegToRad(274.-17.));
+  mmath::Quaternion<double> correctToNorth(down, mmath::Angles::DegToRad(274.-360-16.));
   Serial.printf("rotateToGravity quaternion: %f %f %f %f\n", rotateToGravity.w,
                 rotateToGravity.x, rotateToGravity.y, rotateToGravity.z);
   Serial.printf("correctToNorth quaternion: %f %f %f %f\n", correctToNorth.w,
@@ -177,7 +177,7 @@ mmath::Vector<3, double> Icm20948::findGravity() {
   // sqrt(g_x*g_x + g_y*g_y+ g_z*g_z);
   // Average the first xxx readings.DMP seems to take a few seconds to settle
   // down anyhow.
-  int counter = 750;
+  int counter = 250;
   int i = 0;
   mmath::Vector<3, double> mean(0., 0., 0.), m2(0., 0., 0), delta1, delta2,
       grav;
