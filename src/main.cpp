@@ -4,12 +4,12 @@
 #include <SoftwareSerial.h>
 #include <WiFi.h>
 
-#include "sensesp.h"
 #include "FdxSource.h"
 #include "NmeaSentenceSource.h"
 #include "TcpServer.h"
 #include "UdpServer.h"
 #include "icm20948.h"
+#include "sensesp.h"
 #include "system/lambda_consumer.h"
 #include "transforms/NmeaMessage.h"
 #include "transforms/NmeaMessage.t.hpp"
@@ -32,6 +32,7 @@ static const bool ENABLE_NMEA1 = true;       // Radio: DSC Input, GPS Output
 static const bool ENABLE_NMEA2 = true;       // Nexus FDX
 static const bool ENABLE_ELITE4HDI = false;  // GPS Input, AIS Output
 static const bool ENABLE_ICM20948 = true;
+static const bool ENABLE_DEMOPRODUCER = false;
 
 const char *ssid = "Schmuddelwetter_24G";
 const char *password = WIFI_PASSWORD_STR;
@@ -64,7 +65,7 @@ NetworkPublisher *networkPublisher;
 NetworkPublisher *debugPublisher;
 
 SoftwareSerial *swSerial[8];
-StringProducer *stringProducer;
+StringProducer *demoProducer;
 
 #ifndef DEBUG_DISABLED
 RemoteDebug Debug;
@@ -93,12 +94,11 @@ void setupApp() {
     Serial.printf("Got IP %s\n", WiFi.localIP().toString().c_str());
   }
 
-  
 #ifndef DEBUG_DISABLED
   MDNS.addService("telnet", "tcp",
-                  23);     // Telnet server of RemoteDebug, register as telnet
+                  23);  // Telnet server of RemoteDebug, register as telnet
   Debug.begin(HOST_NAME, RemoteDebug::DEBUG);  // Initialize the WiFi server
-  Debug.setResetCmdEnabled(true);  // Enable the reset command
+  Debug.setResetCmdEnabled(true);              // Enable the reset command
   Debug.showProfiler(
       false);  // Profiler (Good to measure times, to optimize codes)
   Debug.showTime(true);
@@ -113,25 +113,29 @@ void setupApp() {
     String type;
     if (ArduinoOTA.getCommand() == U_FLASH)
       type = "sketch";
-    else // U_SPIFFS
+    else  // U_SPIFFS
       type = "filesystem";
 
-    // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
+    // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using
+    // SPIFFS.end()
     debugI("OTA start updating %s", type);
   });
-  ArduinoOTA.onEnd([]() {
-    debugI("\nOTA End");
-  });
+  ArduinoOTA.onEnd([]() { debugI("\nOTA End"); });
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
     debugI("OTA Progress: %u%%\r", (progress / (total / 100)));
   });
   ArduinoOTA.onError([](ota_error_t error) {
     debugE("OTA Error[%u]: ", error);
-    if (error == OTA_AUTH_ERROR) debugE("OTA Auth Failed");
-    else if (error == OTA_BEGIN_ERROR) debugE("OTA Begin Failed");
-    else if (error == OTA_CONNECT_ERROR) debugE("OTA Connect Failed");
-    else if (error == OTA_RECEIVE_ERROR) debugE("OTA Receive Failed");
-    else if (error == OTA_END_ERROR) debugE("OTA End Failed");
+    if (error == OTA_AUTH_ERROR)
+      debugE("OTA Auth Failed");
+    else if (error == OTA_BEGIN_ERROR)
+      debugE("OTA Begin Failed");
+    else if (error == OTA_CONNECT_ERROR)
+      debugE("OTA Connect Failed");
+    else if (error == OTA_RECEIVE_ERROR)
+      debugE("OTA Receive Failed");
+    else if (error == OTA_END_ERROR)
+      debugE("OTA End Failed");
   });
   ArduinoOTA.begin();
 
@@ -273,14 +277,16 @@ void setupApp() {
         ->connect_to(nmeaSentenceReporter);
   }
 
-  stringProducer = new StringProducer();
-  stringProducer->connect_to(nmeaSentenceReporter);
-  app.onRepeat(1000, []() {
-    char buf[100];
-    //sprintf(buf, "Ping %lu\n", millis());
-    sprintf(buf, "$GPGLL,3751.65,S,14507.36,E*77\r\n");
-    stringProducer->emit(buf);
-  });
+  if (ENABLE_DEMOPRODUCER) {
+    demoProducer = new StringProducer();
+    demoProducer->connect_to(nmeaSentenceReporter);
+    app.onRepeat(1000, []() {
+      char buf[100];
+      // sprintf(buf, "Ping %lu\n", millis());
+      sprintf(buf, "$GPGLL,3751.65,S,14507.36,E*77\r\n");
+      demoProducer->emit(buf);
+    });
+  }
 
   Enable::enable_all();
 }
