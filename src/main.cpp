@@ -82,6 +82,7 @@ void setupApp() {
   Serial.printf("Connecting to Wifi Station with ssid '%s'.\n", ssid);
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
+  WiFi.setSleep(false);
   if (WiFi.waitForConnectResult() != WL_CONNECTED) {
     Serial.println("WiFi Station not found. Falling back to AP.");
     Serial.printf("Wifi AP with ssid '%s' and password '%s'.\n", ssid_svala,
@@ -95,8 +96,6 @@ void setupApp() {
   }
 
 #ifndef DEBUG_DISABLED
-  MDNS.addService("telnet", "tcp",
-                  23);  // Telnet server of RemoteDebug, register as telnet
   Debug.begin(HOST_NAME, RemoteDebug::DEBUG);  // Initialize the WiFi server
   Debug.setResetCmdEnabled(true);              // Enable the reset command
   Debug.showProfiler(
@@ -139,10 +138,17 @@ void setupApp() {
   });
   ArduinoOTA.begin();
 
+#ifndef DEBUG_DISABLED
+  MDNS.addService("telnet", "tcp",
+                  23);  // Telnet server of RemoteDebug, register as telnet
+#endif
+
   // networkPublisher = new UdpServer(BROADCAST_PORT);s
   networkPublisher = new TcpServer(TCP_SERVER_PORT);
+  MDNS.addService("nmea_multiplexer", "tcp", TCP_SERVER_PORT);
   // debugPublisher = new UdpServer(BROADCAST_PORT + 1);
   debugPublisher = new TcpServer(TCP_SERVER_PORT + 1);
+  MDNS.addService("fdx_stream", "tcp", TCP_SERVER_PORT + 1);
 
   // swSerial.begin(9600, SWSERIAL_8S1, GPIO_NUM_21);
   // pinMode(GPIO_NUM_26, INPUT);
