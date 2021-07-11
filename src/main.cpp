@@ -103,6 +103,22 @@ void setupApp() {
   Debug.showTime(true);
   Debug.showColors(true);  // Colors
   Debug.setSerialEnabled(false);
+  Debug.setHelpProjectsCmds(
+      "compass calibrate - Calibrate AHRS/Compass\n"
+      "compass offset %i - Add/Subtract value from heading in degree\n"
+      "compass save - Save calibration and bias to EEPROM");
+  Debug.setCallBackProjectCmds([]() {
+    char s[256];
+    std::vector<String> token;
+    strcpy(s, Debug.getLastCommand().c_str());
+    char *t = strtok(s, " ");
+    while (t) {
+      token.push_back(String(t));
+      t = strtok(NULL, " ");
+    }
+    std::for_each(token.cbegin(), token.cend(),
+                  [](const String &s) { debugI("Got token: '%s'", s); });
+  });
 #endif
 
   ArduinoOTA.setHostname(HOST_NAME);
