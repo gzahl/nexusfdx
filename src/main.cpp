@@ -210,6 +210,7 @@ void setupApp() {
         request->send(response);
       });
   httpServer->enable();
+  MDNS.addService("http", "tcp", 80);
 
   auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
     // Serial.print(msg);
