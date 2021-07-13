@@ -251,5 +251,9 @@ bool Icm20948::set_configuration(const JsonObject& config) {
   }
   heading_offset_ = config["heading_offset"];
   calibrate_ = config["calibrate"];
+  if(calibrate_) {
+    debugI("Calibrate now!");
+    calibrate_ = false; 
+  }
   return true;
 }
