@@ -1,6 +1,10 @@
 #include "Icm20948.h"
 
-Icm20948::Icm20948() { eulerAngles.yaw = 0.0; }
+Icm20948::Icm20948(String config_path) : Sensor(config_path) {
+  eulerAngles.yaw = 0.0;
+  heading_offset_ = 274. - 360 - 16.;
+  load_configuration();
+}
 
 void Icm20948::enable() {
   debugI("Enabling icm20948!");
@@ -66,7 +70,7 @@ void Icm20948::enable() {
     auto down = mmath::Vector<3, double>(0., 0., 1.);
     auto rotateToGravity = rotationBetweenTwoVectors(gravity, down);
     mmath::Quaternion<double> correctToNorth(
-        down, mmath::Angles::DegToRad(274. - 360 - 16.));
+        down, mmath::Angles::DegToRad(heading_offset_));
     debugD("rotateToGravity quaternion: %f %f %f %f", rotateToGravity.w,
            rotateToGravity.x, rotateToGravity.y, rotateToGravity.z);
     debugD("correctToNorth quaternion: %f %f %f %f", correctToNorth.w,
@@ -109,12 +113,6 @@ void Icm20948::enable() {
           data.roll.emit(mmath::Angles::RadToDeg(euler.y));
           data.yaw.emit(mmath::Angles::RadToDeg(euler.z));
 
-          /*
-          const double degMillisToDegMinutes = 60000.;
-          data.rateOfTurn.emit((eulerAngles.yaw - yaw0) /
-                               (eulerAngles.time - time0) *
-                               degMillisToDegMinutes);
-                               */
           data.accuracy.emit(dmpData.Quat9.Data.Accuracy);
         }
 
@@ -123,7 +121,20 @@ void Icm20948::enable() {
           double gyroX = (double)dmpData.Gyro_Calibr.Data.X * scale;
           double gyroY = (double)dmpData.Gyro_Calibr.Data.Y * scale;
           double gyroZ = (double)dmpData.Gyro_Calibr.Data.Z * scale;
-          mmath::Vector<3, double> gyro(gyroX, gyroY, gyroZ);
+          // mmath::Vector<3, double> gyro(gyroX, gyroY, gyroZ);
+          // auto gyro_calibrated = calibration * gyro * conj(calibration);
+
+          double w = -sqrt(
+              1.0 - ((gyroX * gyroX) + (gyroY * gyroY) + (gyroZ * gyroZ)));
+          mmath::Quaternion<double> gyro(w, gyroX, gyroY, gyroZ);
+
+          auto gyro_calibrated = calibration * gyro;
+          auto gyro_euler = gyro_calibrated.ToEulerXYZ();
+
+          // const double degMillisToDegMinutes = 60000.;
+          data.pitch_rate.emit(mmath::Angles::RadToDeg(-gyro_euler.x));
+          data.roll_rate.emit(mmath::Angles::RadToDeg(gyro_euler.y));
+          data.yaw_rate.emit(mmath::Angles::RadToDeg(gyro_euler.z));
         }
       }
     });
@@ -213,4 +224,28 @@ boolean Icm20948::available() {
 
   return (icm.status == ICM_20948_Stat_Ok) ||
          (icm.status == ICM_20948_Stat_FIFOMoreDataAvail);
+}
+
+void Icm20948::get_configuration(JsonObject& root) {
+  root["heading_offset"] = heading_offset_;
+}
+
+static const char SCHEMA[] PROGMEM = R"###({
+    "type": "object",
+    "properties": {
+        "heading_offset": { "title": "Heading offset", "type": "number", "description": "The offset of the heading, because the sensor is not aligned to the boat axis." }
+    }
+  })###";
+
+String Icm20948::get_config_schema() { return FPSTR(SCHEMA); }
+
+bool Icm20948::set_configuration(const JsonObject& config) {
+  String expected[] = {"heading_offset"};
+  for (auto str : expected) {
+    if (!config.containsKey(str)) {
+      return false;
+    }
+  }
+  heading_offset_ = config["heading_offset"];
+  return true;
 }

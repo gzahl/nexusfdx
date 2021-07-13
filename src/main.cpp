@@ -8,7 +8,7 @@
 #include "NmeaSentenceSource.h"
 #include "TcpServer.h"
 #include "UdpServer.h"
-#include "icm20948.h"
+#include "Icm20948.h"
 #include "sensesp.h"
 #include "system/lambda_consumer.h"
 #include "transforms/NmeaMessage.h"
@@ -16,6 +16,7 @@
 #include "transforms/lambda_transform.h"
 #include "transforms/moving_average.h"
 #include "wiring_helpers.h"
+#include "SPIFFS.h"
 
 #define QUOTE(name) #name
 #define STR(macro) QUOTE(macro)
@@ -175,6 +176,8 @@ void setupApp() {
     ArduinoOTA.handle();
   });
 
+  SPIFFS.begin(true);
+
   auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
     // Serial.print(msg);
     rdebugV("%s", msg.c_str());
@@ -282,7 +285,7 @@ void setupApp() {
 
   Icm20948 *icm;
   if (ENABLE_ICM20948) {
-    icm = new Icm20948();
+    icm = new Icm20948("/compass");
     icm->data.pitch
         .connect_to(new NmeaMessage<double>(MessageType::NMEA_XDR_PITCH))
         ->connect_to(nmeaSentenceReporter);
@@ -291,7 +294,7 @@ void setupApp() {
         ->connect_to(nmeaSentenceReporter);
     icm->data.yaw.connect_to(new NmeaMessage<double>(MessageType::NMEA_HDM))
         ->connect_to(nmeaSentenceReporter);
-    icm->data.rateOfTurn
+    icm->data.yaw_rate
         .connect_to(new LambdaTransform<double, float>(
             [](double in) { return (float)in; }))
         ->connect_to(new MovingAverage(5))

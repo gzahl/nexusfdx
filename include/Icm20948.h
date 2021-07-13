@@ -8,9 +8,9 @@
 
 #include "ICM_20948.h"
 #include "pwrUtility.hpp"
+#include "sensesp.h"
 #include "sensors/sensor.h"
 #include "system/observablevalue.h"
-#include "sensesp.h"
 
 #define WIRE_PORT Wire
 
@@ -22,13 +22,15 @@ struct IcmData {
   ObservableValue<double> pitch;
   ObservableValue<double> roll;
   ObservableValue<double> yaw;
-  ObservableValue<double> rateOfTurn;
+  ObservableValue<double> pitch_rate;
+  ObservableValue<double> roll_rate;
+  ObservableValue<double> yaw_rate;
   ObservableValue<int16_t> accuracy;
 };
 
 class Icm20948 : Sensor {
  public:
-  Icm20948();
+  Icm20948(String config_path);
   virtual void enable() override final;
   IcmData data;
 
@@ -37,6 +39,7 @@ class Icm20948 : Sensor {
   EulerAngles eulerAngles;
   icm_20948_DMP_data_t dmpData;
   mmath::Quaternion<double> calibration;
+  double heading_offset_;
   boolean available();
   mmath::Vector<3, double> findGravity();
   mmath::Quaternion<double> rotationBetweenTwoVectors(
@@ -47,6 +50,9 @@ class Icm20948 : Sensor {
 
   mmath::Quaternion<double> axisAngleQuaternion(mmath::Vector<3, double> axis,
                                                 double angle);
+  virtual void get_configuration(JsonObject& doc) override;
+  virtual bool set_configuration(const JsonObject& config) override;
+  virtual String get_config_schema() override;
 };
 
 #endif
