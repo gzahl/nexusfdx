@@ -5,10 +5,11 @@
 #include <WiFi.h>
 
 #include "FdxSource.h"
+#include "Icm20948.h"
 #include "NmeaSentenceSource.h"
+#include "SPIFFS.h"
 #include "TcpServer.h"
 #include "UdpServer.h"
-#include "Icm20948.h"
 #include "sensesp.h"
 #include "system/lambda_consumer.h"
 #include "transforms/NmeaMessage.h"
@@ -16,7 +17,6 @@
 #include "transforms/lambda_transform.h"
 #include "transforms/moving_average.h"
 #include "wiring_helpers.h"
-#include "SPIFFS.h"
 
 #define QUOTE(name) #name
 #define STR(macro) QUOTE(macro)
@@ -67,6 +67,8 @@ NetworkPublisher *debugPublisher;
 
 SoftwareSerial *swSerial[8];
 StringProducer *demoProducer;
+
+HTTPServer *httpServer;
 
 #ifndef DEBUG_DISABLED
 RemoteDebug Debug;
@@ -177,6 +179,37 @@ void setupApp() {
   });
 
   SPIFFS.begin(true);
+  httpServer = new HTTPServer(
+      []() {
+        debugW("Resetting the device configuration.");
+        // networking_->reset_settings();
+        SPIFFS.format();
+        app.onDelay(1000, []() {
+          ESP.restart();
+          delay(1000);
+        });
+      },
+      [](AsyncWebServerRequest *request) {
+        auto *response = request->beginResponseStream("text/plain");
+
+        response->setCode(200);
+        response->printf("Name: %s, build at %s %s\n", HOST_NAME, __DATE__,
+                         __TIME__);
+
+        response->printf("MAC: %s\n", WiFi.macAddress().c_str());
+        response->printf("WiFi signal: %d\n", WiFi.RSSI());
+
+        response->printf("SSID: %s\n", WiFi.SSID().c_str());
+
+        /*
+        response->printf("Signal K server address: %s\n",
+                         ws_client_->get_server_address().c_str());
+        response->printf("Signal K server port: %d\n",
+                         ws_client_->get_server_port());
+        */
+        request->send(response);
+      });
+  httpServer->enable();
 
   auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
     // Serial.print(msg);
