@@ -3,6 +3,7 @@
 Icm20948::Icm20948(String config_path) : Sensor(config_path) {
   eulerAngles.yaw = 0.0;
   heading_offset_ = 274. - 360 - 16.;
+  calibrate_ = false;
   load_configuration();
 }
 
@@ -65,10 +66,10 @@ void Icm20948::enable() {
   }
 
   if (success) {
-    auto gravity = findGravity();
-    debugI("Found gravity: %f, %f, %f", gravity.x, gravity.y, gravity.z);
+    gravity_ = findGravity();
+    debugI("Found gravity: %f, %f, %f", gravity_.x, gravity_.y, gravity_.z);
     auto down = mmath::Vector<3, double>(0., 0., 1.);
-    auto rotateToGravity = rotationBetweenTwoVectors(gravity, down);
+    auto rotateToGravity = rotationBetweenTwoVectors(gravity_, down);
     mmath::Quaternion<double> correctToNorth(
         down, mmath::Angles::DegToRad(heading_offset_));
     debugD("rotateToGravity quaternion: %f %f %f %f", rotateToGravity.w,
@@ -228,24 +229,27 @@ boolean Icm20948::available() {
 
 void Icm20948::get_configuration(JsonObject& root) {
   root["heading_offset"] = heading_offset_;
+  root["calibrate"] = calibrate_;
 }
 
 static const char SCHEMA[] PROGMEM = R"###({
     "type": "object",
     "properties": {
-        "heading_offset": { "title": "Heading offset", "type": "number", "description": "The offset of the heading, because the sensor is not aligned to the boat axis." }
+        "heading_offset": { "title": "Heading offset", "type": "number", "description": "The offset of the heading, because the sensor is not aligned to the boat axis." },
+        "calibrate" : { "title" : "Run calibration and find gravity.", "type": "boolean", "description": "Run the calibration for gravity again. The sensor should be stationary."}
     }
   })###";
 
 String Icm20948::get_config_schema() { return FPSTR(SCHEMA); }
 
 bool Icm20948::set_configuration(const JsonObject& config) {
-  String expected[] = {"heading_offset"};
+  String expected[] = {"heading_offset", "calibrate"};
   for (auto str : expected) {
     if (!config.containsKey(str)) {
       return false;
     }
   }
   heading_offset_ = config["heading_offset"];
+  calibrate_ = config["calibrate"];
   return true;
 }

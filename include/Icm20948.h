@@ -40,6 +40,9 @@ class Icm20948 : Sensor {
   icm_20948_DMP_data_t dmpData;
   mmath::Quaternion<double> calibration;
   double heading_offset_;
+  bool calibrate_;
+  mmath::Vector<3, double> gravity_;
+
   boolean available();
   mmath::Vector<3, double> findGravity();
   mmath::Quaternion<double> rotationBetweenTwoVectors(
