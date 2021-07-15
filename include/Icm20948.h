@@ -38,9 +38,10 @@ class Icm20948 : Sensor {
   ICM_20948_I2C icm;  // Otherwise create an ICM_20948_I2C object
   EulerAngles eulerAngles;
   icm_20948_DMP_data_t dmpData;
-  mmath::Quaternion<double> calibration;
+  mmath::Quaternion<double> calibration_;
   double heading_offset_;
   bool calibrate_;
+  bool enabled;
   mmath::Vector<3, double> gravity_;
 
   boolean available();
@@ -53,6 +54,9 @@ class Icm20948 : Sensor {
 
   mmath::Quaternion<double> axisAngleQuaternion(mmath::Vector<3, double> axis,
                                                 double angle);
+  mmath::Quaternion<double> calculateCalibration(
+      mmath::Vector<3, double>& gravity, double heading_offset);
+
   virtual void get_configuration(JsonObject& doc) override;
   virtual bool set_configuration(const JsonObject& config) override;
   virtual String get_config_schema() override;

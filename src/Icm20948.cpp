@@ -2,9 +2,10 @@
 
 Icm20948::Icm20948(String config_path) : Sensor(config_path) {
   eulerAngles.yaw = 0.0;
-  heading_offset_ = 274. - 360 - 16.;
-  calibrate_ = false;
+  //heading_offset_ = 274. - 360 - 16.;
   load_configuration();
+  calibrate_ = false;
+  enabled = false;
 }
 
 void Icm20948::enable() {
@@ -66,22 +67,8 @@ void Icm20948::enable() {
   }
 
   if (success) {
-    gravity_ = findGravity();
-    debugI("Found gravity: %f, %f, %f", gravity_.x, gravity_.y, gravity_.z);
-    auto down = mmath::Vector<3, double>(0., 0., 1.);
-    auto rotateToGravity = rotationBetweenTwoVectors(gravity_, down);
-    mmath::Quaternion<double> correctToNorth(
-        down, mmath::Angles::DegToRad(heading_offset_));
-    debugD("rotateToGravity quaternion: %f %f %f %f", rotateToGravity.w,
-           rotateToGravity.x, rotateToGravity.y, rotateToGravity.z);
-    debugD("correctToNorth quaternion: %f %f %f %f", correctToNorth.w,
-           correctToNorth.x, correctToNorth.y, correctToNorth.z);
-
-    calibration = correctToNorth * rotateToGravity;
-    // calibration = rotateToGravity;
-    calibration = calibration / calibration.norm();
-    debugD("calibration quaternion: %f %f %f %f", calibration.w, calibration.x,
-           calibration.y, calibration.z);
+    enabled = true;
+    calibration_ = calculateCalibration(gravity_, heading_offset_);
 
     app.onTick([this]() {
       while (available()) {
@@ -106,7 +93,7 @@ void Icm20948::enable() {
 
           // auto quat_calibrated = calibration * quaternion *
           // conj(calibration);
-          auto quat_calibrated = calibration * quaternion;
+          auto quat_calibrated = calibration_ * quaternion;
 
           auto euler = quat_calibrated.ToEulerXYZ();
 
@@ -129,7 +116,7 @@ void Icm20948::enable() {
               1.0 - ((gyroX * gyroX) + (gyroY * gyroY) + (gyroZ * gyroZ)));
           mmath::Quaternion<double> gyro(w, gyroX, gyroY, gyroZ);
 
-          auto gyro_calibrated = calibration * gyro;
+          auto gyro_calibrated = calibration_ * gyro;
           auto gyro_euler = gyro_calibrated.ToEulerXYZ();
 
           // const double degMillisToDegMinutes = 60000.;
@@ -140,6 +127,25 @@ void Icm20948::enable() {
       }
     });
   }
+}
+
+mmath::Quaternion<double> Icm20948::calculateCalibration(
+    mmath::Vector<3, double>& gravity, double heading_offset) {
+  auto down = mmath::Vector<3, double>(0., 0., 1.);
+  auto rotateToGravity = rotationBetweenTwoVectors(gravity, down);
+  mmath::Quaternion<double> correctToNorth(
+      down, mmath::Angles::DegToRad(heading_offset));
+  debugD("rotateToGravity quaternion: %f %f %f %f", rotateToGravity.w,
+         rotateToGravity.x, rotateToGravity.y, rotateToGravity.z);
+  debugD("correctToNorth quaternion: %f %f %f %f", correctToNorth.w,
+         correctToNorth.x, correctToNorth.y, correctToNorth.z);
+
+  mmath::Quaternion<double> calibration = correctToNorth * rotateToGravity;
+  // calibration = rotateToGravity;
+  calibration = calibration / calibration.norm();
+  debugD("calibration quaternion: %f %f %f %f", calibration.w, calibration.x,
+         calibration.y, calibration.z);
+  return calibration;
 }
 
 /**
@@ -230,13 +236,36 @@ boolean Icm20948::available() {
 void Icm20948::get_configuration(JsonObject& root) {
   root["heading_offset"] = heading_offset_;
   root["calibrate"] = calibrate_;
+  JsonArray gravityarr = root.createNestedArray("gravity");
+  
+  gravityarr.add(gravity_.x);
+  gravityarr.add(gravity_.y);
+  gravityarr.add(gravity_.z);
 }
 
 static const char SCHEMA[] PROGMEM = R"###({
     "type": "object",
     "properties": {
-        "heading_offset": { "title": "Heading offset", "type": "number", "description": "The offset of the heading, because the sensor is not aligned to the boat axis." },
-        "calibrate" : { "title" : "Run calibration and find gravity.", "type": "boolean", "description": "Run the calibration for gravity again. The sensor should be stationary."}
+        "heading_offset": { 
+          "title": "Heading offset", 
+          "type": "number", "description": 
+          "The offset of the heading, because the sensor is not aligned to the boat axis."
+          },
+        "calibrate" : { 
+          "title" : "Run calibration and find gravity.", 
+          "type": "boolean", 
+          "format": "checkbox", 
+          "description": "Run the calibration for gravity again. The sensor should be stationary."
+          },
+        "gravity" : {
+          "type": "array",
+          "format": "table",
+          "description": "Gravity vector from calibration. Can not be edited.",
+          "items": {
+            "type": "number",
+            "readOnly": true
+            }
+          }
     }
   })###";
 
@@ -251,9 +280,14 @@ bool Icm20948::set_configuration(const JsonObject& config) {
   }
   heading_offset_ = config["heading_offset"];
   calibrate_ = config["calibrate"];
-  if(calibrate_) {
-    debugI("Calibrate now!");
-    calibrate_ = false; 
+  if (calibrate_) {
+    if (enabled) {
+      debugI("Calibrate now!");
+      gravity_ = findGravity();
+      debugI("Found gravity: %f, %f, %f", gravity_.x, gravity_.y, gravity_.z);
+    }
+    calibrate_ = false;
   }
+  calibration_ = calculateCalibration(gravity_, heading_offset_);
   return true;
 }
