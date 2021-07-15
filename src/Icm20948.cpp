@@ -2,7 +2,8 @@
 
 Icm20948::Icm20948(String config_path) : Sensor(config_path) {
   eulerAngles.yaw = 0.0;
-  //heading_offset_ = 274. - 360 - 16.;
+  heading_offset_ = 274. - 360 - 16.;
+  gravity_ = mmath::Vector<3, double>(0.,0.,0.);
   load_configuration();
   calibrate_ = false;
   enabled = false;
