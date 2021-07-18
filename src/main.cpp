@@ -32,7 +32,7 @@ static const bool ENABLE_NMEA0 = true;       // Radio: AIS Input
 static const bool ENABLE_NMEA1 = true;       // Radio: DSC Input, GPS Output
 static const bool ENABLE_NMEA2 = true;       // Nexus FDX
 static const bool ENABLE_ELITE4HDI = false;  // GPS Input, AIS Output
-static const bool ENABLE_ICM20948 = true;
+static const bool ENABLE_ICM20948 = false;
 static const bool ENABLE_DEMOPRODUCER = false;
 
 const char *ssid = "Schmuddelwetter_24G";
@@ -227,7 +227,7 @@ void setupApp() {
     swSerial[4] = new SoftwareSerial();
     swSerial[4]->begin(38400, SWSERIAL_8N1, NMEA4_RX, NMEA4_TX, false,
                        bufCapacity, isrBufCapacity);
-    nmea4 = new NmeaSentenceSource(swSerial[4]);
+    nmea4 = new NmeaSentenceSource(swSerial[4], "Elite 4 HDI TX");
     nmea4->connect_to(nmeaSentenceReporter);
   }
 
@@ -237,7 +237,7 @@ void setupApp() {
     swSerial[0] = new SoftwareSerial();
     swSerial[0]->begin(38400, SWSERIAL_8N1, NMEA0_RX, NMEA0_TX, false,
                        bufCapacity, isrBufCapacity);
-    nmea0 = new NmeaSentenceSource(swSerial[0]);
+    nmea0 = new NmeaSentenceSource(swSerial[0], "MT-550 AIS");
     nmea0->connect_to(nmeaSentenceReporter);
   }
 
@@ -247,7 +247,7 @@ void setupApp() {
     swSerial[1] = new SoftwareSerial();
     swSerial[1]->begin(38400, SWSERIAL_8N1, NMEA1_RX, NMEA1_TX, false,
                        bufCapacity, isrBufCapacity);
-    nmea1 = new NmeaSentenceSource(swSerial[1]);
+    nmea1 = new NmeaSentenceSource(swSerial[1], "MT-550 DSC");
     nmea1->connect_to(nmeaSentenceReporter);
   }
 
@@ -299,7 +299,7 @@ void setupApp() {
     swSerial[3] = new SoftwareSerial();
     swSerial[3]->begin(38400, SWSERIAL_8N1, NMEA3_RX, NMEA3_TX, false,
                        bufCapacity, isrBufCapacity);
-    nmea3 = new NmeaSentenceSource(swSerial[3]);
+    nmea3 = new NmeaSentenceSource(swSerial[3], "Elite4 HDI");
     if (nmea1) nmea3->connect_to(nmea1);
     nmea3->connect_to(nmeaSentenceReporter);
   }
@@ -312,7 +312,7 @@ void setupApp() {
     swSerial[7]->begin(9600, SWSERIAL_8N1, GPS_RX, GPS_TX, false, bufCapacity,
                        isrBufCapacity);
 
-    gps = new NmeaSentenceSource(swSerial[7]);
+    gps = new NmeaSentenceSource(swSerial[7], "GPS");
     if (nmea1) gps->connect_to(nmea1);
     gps->connect_to(nmeaSentenceReporter);
   }

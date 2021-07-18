@@ -4,7 +4,7 @@
 
 #include "sensesp.h"
 
-NmeaSentenceSource::NmeaSentenceSource(Stream *rx_stream) : Sensor(), ValueProducer(), ValueConsumer() {
+NmeaSentenceSource::NmeaSentenceSource(Stream *rx_stream, const char* name) : Sensor(), ValueProducer(), ValueConsumer(), name_(name) {
   rx_stream_ = rx_stream;
   current_state = &NmeaSentenceSource::state_start;
 }
@@ -58,7 +58,7 @@ void NmeaSentenceSource::state_in_term(char c) {
       break;
     default:
       if (msg.length() > 80) {
-        printf("Message too long, reset.\n");
+        debugW("Message too long for NmeaSource '%s', reset.\n", name_);
         current_state = &NmeaSentenceSource::state_start;
       } else {
         msg.concat(c);
@@ -80,7 +80,7 @@ void NmeaSentenceSource::state_in_checksum(char c) {
       msg.concat(chksum);
       msg.concat("\r\n");
       if (!validate_checksum()) {
-        // printf("Chksum wrong! '%s'\n", msg.c_str());
+        debugW("Chksum wrong for NmeaSource '%s'! '%s'\n", name_.c_str(), msg.c_str());
         current_state = &NmeaSentenceSource::state_start;
         return;
       }

@@ -6,7 +6,7 @@
 
 class NmeaSentenceSource : public Sensor, public ValueProducer<String>, public ValueConsumer<String> {
  public:
-  NmeaSentenceSource(Stream *rx_stream);
+  NmeaSentenceSource(Stream *rx_stream, const char* name);
   virtual void enable() override final;
   void set_input(String new_value, uint8_t input_channel);
 
@@ -15,6 +15,7 @@ class NmeaSentenceSource : public Sensor, public ValueProducer<String>, public V
   String msg;
   String chksum;
   void handle(char c);
+  String name_;
 
   void (NmeaSentenceSource::*current_state)(char);
   void state_start(char c);

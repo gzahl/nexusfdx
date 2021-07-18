@@ -9,7 +9,7 @@ FdxSource::FdxSource(SoftwareSerial *rx_stream) : Sensor(), fdxParser() {
 
 void FdxSource::enable() {
   // enable reading the serial port
-  Serial.println("Enabling FdxSource!");
+  debugI("Enabling FdxSource!");
   app.onAvailable(*rx_stream_, [this]() {
     while (rx_stream_->available()) {
       byte = rx_stream_->read();
