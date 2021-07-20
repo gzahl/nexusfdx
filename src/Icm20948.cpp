@@ -3,7 +3,8 @@
 Icm20948::Icm20948(String config_path) : Sensor(config_path) {
   eulerAngles.yaw = 0.0;
   heading_offset_ = 274. - 360 - 16.;
-  gravity_ = mmath::Vector<3, double>(0.,0.,0.);
+  gravity_ = mmath::Vector<3, double>(0., 0., 1.);
+  calibration_ = mmath::Quaternion<double>(1., 0., 0., 0.);
   load_configuration();
   calibrate_ = false;
   enabled = false;
@@ -71,6 +72,14 @@ void Icm20948::enable() {
     enabled = true;
     calibration_ = calculateCalibration(gravity_, heading_offset_);
 
+    auto copyToMeanGravity = new LambdaConsumer<mmath::Vector<3, double>>(
+        [this](mmath::Vector<3, double> grav) {
+          this->mean_gravity = grav;
+        });
+    data.gravity
+        .connect_to(new MovingAverage<mmath::Vector<3, double>, double>(250))
+        ->connect_to(copyToMeanGravity);
+
     app.onTick([this]() {
       while (available()) {
         if ((dmpData.header & DMP_header_bitmap_Quat9) > 0) {
@@ -125,6 +134,14 @@ void Icm20948::enable() {
           data.roll_rate.emit(mmath::Angles::RadToDeg(gyro_euler.y));
           data.yaw_rate.emit(mmath::Angles::RadToDeg(gyro_euler.z));
         }
+
+        if ((dmpData.header & DMP_header_bitmap_Accel) > 0) {
+          mmath::Vector<3, double> grav;
+          grav.x = (float)dmpData.Raw_Accel.Data.X;
+          grav.y = (float)dmpData.Raw_Accel.Data.Y;
+          grav.z = (float)dmpData.Raw_Accel.Data.Z;
+          data.gravity.emit(grav);
+        }
       }
     });
   }
@@ -133,6 +150,8 @@ void Icm20948::enable() {
 mmath::Quaternion<double> Icm20948::calculateCalibration(
     mmath::Vector<3, double>& gravity, double heading_offset) {
   auto down = mmath::Vector<3, double>(0., 0., 1.);
+      debugI("Using gravity vector for calibration: %f, %f, %f", gravity.x,
+           gravity.y, gravity.z);
   auto rotateToGravity = rotationBetweenTwoVectors(gravity, down);
   mmath::Quaternion<double> correctToNorth(
       down, mmath::Angles::DegToRad(heading_offset));
@@ -179,45 +198,6 @@ mmath::Quaternion<double> Icm20948::conj(mmath::Quaternion<double> q) {
   return mmath::Quaternion<double>(q.w, -q.x, -q.y, -q.z);
 }
 
-mmath::Vector<3, double> Icm20948::findGravity() {
-  debugI(
-      "Calibrating gravity vector - keep the sensor still or this might give "
-      "inaccurate results");
-  // Do exponential moving average over a certain time period and wait until
-  // vector settles at around 1g. Takes around 8 seconds. double totalAcc =
-  // sqrt(g_x*g_x + g_y*g_y+ g_z*g_z);
-  // Average the first xxx readings.DMP seems to take a few seconds to settle
-  // down anyhow.
-  int counter = 250;
-  int i = 0;
-  mmath::Vector<3, double> mean(0., 0., 0.), m2(0., 0., 0), delta1, delta2,
-      grav;
-
-  while (i < counter) {
-    if (available()) {
-      if ((dmpData.header & DMP_header_bitmap_Accel) > 0) {
-        grav.x = (float)dmpData.Raw_Accel.Data.X;
-        grav.y = (float)dmpData.Raw_Accel.Data.Y;
-        grav.z = (float)dmpData.Raw_Accel.Data.Z;
-        i++;
-        delta1 = grav - mean;
-        mean += delta1 / (double)i;
-        delta2 = grav - mean;
-        m2 += delta1 * delta2;
-        if (i % (counter / 10) == 0) {
-          debugD("gravity[%i/%i]: %f +- %f, %f +- %f, %f +- %f", i, counter,
-                 mean.x, sqrt(m2.x / i), mean.y, sqrt(m2.y / i), mean.z,
-                 sqrt(m2.z / i));
-        }
-      }
-    } else {
-      delay(1);
-    }
-  }
-
-  return mean;
-}
-
 boolean Icm20948::available() {
   // Note:
   //    readDMPdataFromFIFO will return ICM_20948_Stat_FIFONoDataAvail if no
@@ -238,7 +218,7 @@ void Icm20948::get_configuration(JsonObject& root) {
   root["heading_offset"] = heading_offset_;
   root["calibrate"] = calibrate_;
   JsonArray gravityarr = root.createNestedArray("gravity");
-  
+
   gravityarr.add(gravity_.x);
   gravityarr.add(gravity_.y);
   gravityarr.add(gravity_.z);
@@ -273,7 +253,7 @@ static const char SCHEMA[] PROGMEM = R"###({
 String Icm20948::get_config_schema() { return FPSTR(SCHEMA); }
 
 bool Icm20948::set_configuration(const JsonObject& config) {
-  String expected[] = {"heading_offset", "calibrate"};
+  String expected[] = {"heading_offset", "calibrate", "gravity"};
   for (auto str : expected) {
     if (!config.containsKey(str)) {
       return false;
@@ -281,12 +261,12 @@ bool Icm20948::set_configuration(const JsonObject& config) {
   }
   heading_offset_ = config["heading_offset"];
   calibrate_ = config["calibrate"];
+  JsonArray gravarr = config["gravity"].as<JsonArray>();
+  gravity_.x = gravarr[0].as<double>();
+  gravity_.y = gravarr[1].as<double>();
+  gravity_.z = gravarr[2].as<double>();
   if (calibrate_) {
-    if (enabled) {
-      debugI("Calibrate now!");
-      gravity_ = findGravity();
-      debugI("Found gravity: %f, %f, %f", gravity_.x, gravity_.y, gravity_.z);
-    }
+    gravity_ = mean_gravity;
     calibrate_ = false;
   }
   calibration_ = calculateCalibration(gravity_, heading_offset_);

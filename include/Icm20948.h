@@ -11,6 +11,8 @@
 #include "sensesp.h"
 #include "sensors/sensor.h"
 #include "system/observablevalue.h"
+#include "system/lambda_consumer.h"
+#include "transforms/moving_average.h"
 
 #define WIRE_PORT Wire
 
@@ -26,6 +28,7 @@ struct IcmData {
   ObservableValue<double> roll_rate;
   ObservableValue<double> yaw_rate;
   ObservableValue<int16_t> accuracy;
+  ObservableValue<mmath::Vector<3, double>> gravity;
 };
 
 class Icm20948 : Sensor {
@@ -43,6 +46,7 @@ class Icm20948 : Sensor {
   bool calibrate_;
   bool enabled;
   mmath::Vector<3, double> gravity_;
+  mmath::Vector<3, double> mean_gravity;
 
   boolean available();
   mmath::Vector<3, double> findGravity();

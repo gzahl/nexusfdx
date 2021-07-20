@@ -32,7 +32,7 @@ static const bool ENABLE_NMEA0 = true;       // Radio: AIS Input
 static const bool ENABLE_NMEA1 = true;       // Radio: DSC Input, GPS Output
 static const bool ENABLE_NMEA2 = true;       // Nexus FDX
 static const bool ENABLE_ELITE4HDI = false;  // GPS Input, AIS Output
-static const bool ENABLE_ICM20948 = false;
+static const bool ENABLE_ICM20948 = true;
 static const bool ENABLE_DEMOPRODUCER = false;
 
 const char *ssid = "Schmuddelwetter_24G";
@@ -60,7 +60,7 @@ static const gpio_num_t GPS_RX = GPIO_NUM_23;
 static const gpio_num_t GPS_TX = GPIO_NUM_19;
 
 int bufCapacity = 80;
-int isrBufCapacity = 20;
+int isrBufCapacity = 800;
 
 NetworkPublisher *networkPublisher;
 NetworkPublisher *debugPublisher;
@@ -105,7 +105,7 @@ void setupApp() {
       false);  // Profiler (Good to measure times, to optimize codes)
   Debug.showTime(true);
   Debug.showColors(true);  // Colors
-  Debug.setSerialEnabled(false);
+  Debug.setSerialEnabled(true);
   Debug.setHelpProjectsCmds(
       "compass calibrate - Calibrate AHRS/Compass\n"
       "compass offset %i - Add/Subtract value from heading in degree\n"
@@ -172,11 +172,6 @@ void setupApp() {
   // swSerial.begin(9600, SWSERIAL_8S1, GPIO_NUM_21);
   // pinMode(GPIO_NUM_26, INPUT);
   // pinMode(GPIO_NUM_18, OUTPUT);
-
-  app.onTick([]() {
-    Debug.handle();
-    ArduinoOTA.handle();
-  });
 
   SPIFFS.begin(true);
   httpServer = new HTTPServer(
@@ -260,17 +255,17 @@ void setupApp() {
     fdx = new FdxSource(swSerial[2]);
     NmeaMessage<float> *relativeWindMessage =
         new NmeaMessage<float>(MessageType::NMEA_MWV_RELATIVE);
-    fdx->data.apparantWind.angle.connect_to(new MovingAverage(10))
+    fdx->data.apparantWind.angle.connect_to(new MovingAverage<float, float>(10))
         ->connect_to(relativeWindMessage, 0);
-    fdx->data.apparantWind.speed.connect_to(new MovingAverage(5))
+    fdx->data.apparantWind.speed.connect_to(new MovingAverage<float, float>(5))
         ->connect_to(relativeWindMessage, 1);
     relativeWindMessage->connect_to(nmeaSentenceReporter);
 
     NmeaMessage<float> *trueWindMessage =
         new NmeaMessage<float>(MessageType::NMEA_MWV_TRUE);
-    fdx->data.trueWind.angle.connect_to(new MovingAverage(10))
+    fdx->data.trueWind.angle.connect_to(new MovingAverage<float, float>(10))
         ->connect_to(trueWindMessage, 0);
-    fdx->data.trueWind.speed.connect_to(new MovingAverage(5))
+    fdx->data.trueWind.speed.connect_to(new MovingAverage<float, float>(5))
         ->connect_to(trueWindMessage, 1);
     trueWindMessage->connect_to(nmeaSentenceReporter);
 
@@ -287,7 +282,7 @@ void setupApp() {
             new NmeaMessage<float>(MessageType::NMEA_XDR_SIGNALSTRENGTH))
         ->connect_to(nmeaSentenceReporter);
 
-    fdx->data.depth.connect_to(new MovingAverage(40))
+    fdx->data.depth.connect_to(new MovingAverage<float, float>(40))
         ->connect_to(new NmeaMessage<float>(MessageType::NMEA_DPT))
         ->connect_to(nmeaSentenceReporter);
 
@@ -331,7 +326,7 @@ void setupApp() {
     icm->data.yaw_rate
         .connect_to(new LambdaTransform<double, float>(
             [](double in) { return (float)in; }))
-        ->connect_to(new MovingAverage(5))
+        ->connect_to(new MovingAverage<float, float>(5))
         ->connect_to(new NmeaMessage<float>(MessageType::NMEA_ROT))
         ->connect_to(nmeaSentenceReporter);
   }
@@ -347,6 +342,8 @@ void setupApp() {
     });
   }
 
+  app.onRepeat(20, []() { ArduinoOTA.handle(); });
+  app.onRepeat(1, []() { Debug.handle(); });
   Enable::enable_all();
 }
 
