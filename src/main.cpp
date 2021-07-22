@@ -164,11 +164,11 @@ void setupApp() {
                   23);  // Telnet server of RemoteDebug, register as telnet
 #endif
 
-  // networkPublisher = new UdpServer(BROADCAST_PORT);s
-  networkPublisher = new TcpServer(TCP_SERVER_PORT);
+  networkPublisher = new UdpServer(BROADCAST_PORT);
+  //networkPublisher = new TcpServer(TCP_SERVER_PORT);
   MDNS.addService("nmea_multiplexer", "tcp", TCP_SERVER_PORT);
-  // debugPublisher = new UdpServer(BROADCAST_PORT + 1);
-  debugPublisher = new TcpServer(TCP_SERVER_PORT + 1);
+  debugPublisher = new UdpServer(BROADCAST_PORT + 1);
+  //debugPublisher = new TcpServer(TCP_SERVER_PORT + 1);
   MDNS.addService("fdx_stream", "tcp", TCP_SERVER_PORT + 1);
 
   // swSerial.begin(9600, SWSERIAL_8S1, GPIO_NUM_21);
