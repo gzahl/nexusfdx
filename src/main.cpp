@@ -70,9 +70,11 @@ StringProducer *demoProducer;
 
 HTTPServer *httpServer;
 
+
 #ifndef DEBUG_DISABLED
 RemoteDebug Debug;
 #endif
+
 
 void setupApp() {
   Serial.begin(115200);
@@ -208,8 +210,9 @@ void setupApp() {
   MDNS.addService("http", "tcp", 80);
 
   auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
-    // Serial.print(msg);
+#ifndef DEBUG_DISABLED
     rdebugV("%s", msg.c_str());
+#endif
     networkPublisher->send(msg.c_str());
   });
 
@@ -342,8 +345,10 @@ void setupApp() {
     });
   }
 
-  app.onRepeat(20, []() { ArduinoOTA.handle(); });
+  //app.onRepeat(20, []() { ArduinoOTA.handle(); });
+#ifndef DEBUG_DISABLED  
   app.onRepeat(1, []() { Debug.handle(); });
+#endif
   Enable::enable_all();
 }
 

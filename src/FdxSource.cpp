@@ -66,10 +66,12 @@ unsigned char FdxSource::reverse(unsigned char b) {
 }
 
 void FdxSource::printMessage(unsigned char *msg, unsigned char msglen) {
+  #ifndef DEBUG_DISABLED
   for (unsigned char i = 0; i < msglen; i++) {
     rdebugV("0x%x ", msg[i]);
   }
   debugV("");
+  #endif
 }
 
 void FdxSource::emitRawMessage(unsigned char *msg, unsigned char msglen) {

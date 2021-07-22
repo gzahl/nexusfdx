@@ -5,8 +5,8 @@ Icm20948::Icm20948(String config_path) : Sensor(config_path) {
   heading_offset_ = 274. - 360 - 16.;
   gravity_ = mmath::Vector<3, double>(0., 0., 1.);
   calibration_ = mmath::Quaternion<double>(1., 0., 0., 0.);
-  load_configuration();
   calibrate_ = false;
+  load_configuration();
   enabled = false;
 }
 
@@ -45,7 +45,7 @@ void Icm20948::enable() {
   // FIFO. Setting value can be calculated as follows: Value = (DMP running rate
   // / ODR ) - 1 E.g. For a 5Hz ODR rate when DMP is running at 55Hz, value =
   // (55/5) - 1 = 10.
-  int fusionrate = 4;
+  int fusionrate = 10;
   success &=
       (icm.setDMPODRrate(DMP_ODR_Reg_Quat9, fusionrate) == ICM_20948_Stat_Ok);
   success &= (icm.setDMPODRrate(DMP_ODR_Reg_Gyro_Calibr, fusionrate) ==
@@ -70,7 +70,6 @@ void Icm20948::enable() {
 
   if (success) {
     enabled = true;
-    calibration_ = calculateCalibration(gravity_, heading_offset_);
 
     auto copyToMeanGravity = new LambdaConsumer<mmath::Vector<3, double>>(
         [this](mmath::Vector<3, double> grav) {

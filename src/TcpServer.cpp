@@ -5,41 +5,44 @@ TcpServer::TcpServer(uint16_t port) {
   debugI("Started TCP Server on port: %u", port);
 
   asyncServer->onClient(
-      [](void *arg1, AsyncClient *client) {
-        std::unordered_set<AsyncClient *> *asyncClients_onClient =
-            static_cast<std::unordered_set<AsyncClient *> *>(arg1);
-
-        asyncClients_onClient->insert(client);
+      [this](void *arg1, AsyncClient *client) {
+        this->asyncClients.insert(client);
 
         client->onDisconnect(
-            [](void *arg2, AsyncClient *disconnectingClient) {
-              std::unordered_set<AsyncClient *> *asyncClients_onDisconnect =
-                  static_cast<std::unordered_set<AsyncClient *> *>(arg2);
-              Serial.printf(
+            [this](void *arg2, AsyncClient *disconnectingClient) {
+              this->asyncClients.erase(disconnectingClient);
+              debugI(
                   "Client has disconnected from port %u, ip: %s, No of "
                   "clients: "
-                  "%u\n",
+                  "%u",
                   disconnectingClient->localPort(),
                   disconnectingClient->remoteIP().toString().c_str(),
-                  asyncClients_onDisconnect->size() - 1);
-              asyncClients_onDisconnect->erase(disconnectingClient);
+                  this->asyncClients.size());
             },
             arg1);
 
-        Serial.printf(
+        debugI(
             "New client has been connected to server on port %u, ip: %s, No of "
-            "clients: %u\n",
+            "clients: %u",
             client->localPort(), client->remoteIP().toString().c_str(),
-            asyncClients_onClient->size());
-
-        /*
-        // register events
-        client->onData(&handleData, NULL);
-        client->onError(&handleError, NULL);
-        client->onDisconnect(&handleDisconnect, NULL);
-        client->onTimeout(&handleTimeOut, NULL);*/
+            this->asyncClients.size());
+        client->onError(
+            [this](void *arg2, AsyncClient *client, int8_t error) {
+              debugE("connection error %s from client %s",
+                     client->errorToString(error),
+                     client->remoteIP().toString().c_str());
+              client->close();
+            },
+            arg1);
+        client->onTimeout(
+            [this](void *arg2, AsyncClient *client, uint32_t time) {
+              debugE("client ACK timeout ip: %s",
+                     client->remoteIP().toString().c_str());
+              client->close();
+            },
+            NULL);
       },
-      static_cast<void *>(&asyncClients));
+      NULL);
   asyncServer->begin();
 }
 
