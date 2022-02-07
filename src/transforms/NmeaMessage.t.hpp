@@ -3,7 +3,7 @@
 
 template <typename T>
 NmeaMessage<T>::NmeaMessage(MessageType messageType, String config_path)
-    : Transform<T, String>(config_path), messageType(messageType) {
+    : sensesp::Transform<T, String>(config_path), messageType(messageType) {
   strcpy(deviceId, "--");
 }
 

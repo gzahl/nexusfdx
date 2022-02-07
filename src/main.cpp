@@ -11,12 +11,15 @@
 #include "TcpServer.h"
 #include "UdpServer.h"
 #include "sensesp.h"
-#include "system/lambda_consumer.h"
+#include "sensesp/system/lambda_consumer.h"
 #include "transforms/NmeaMessage.h"
 #include "transforms/NmeaMessage.t.hpp"
-#include "transforms/lambda_transform.h"
+#include "sensesp/transforms/lambda_transform.h"
+#include "sensesp_app.h"
+#include "sensesp_app_builder.h"
+
 #include "transforms/moving_average.h"
-#include "wiring_helpers.h"
+
 
 #define QUOTE(name) #name
 #define STR(macro) QUOTE(macro)
@@ -66,19 +69,20 @@ NetworkPublisher *networkPublisher;
 NetworkPublisher *debugPublisher;
 
 SoftwareSerial *swSerial[8];
-StringProducer *demoProducer;
+
+using namespace sensesp;
+sensesp::StringProducer *demoProducer;
 
 HTTPServer *httpServer;
 
+reactesp::ReactESP app;
 
-#ifndef DEBUG_DISABLED
-RemoteDebug Debug;
+void loop() { app.tick(); }
+
+void setup() {
+#ifndef SERIAL_DEBUG_DISABLED
+  sensesp::SetupSerialDebug(115200);
 #endif
-
-
-void setupApp() {
-  Serial.begin(115200);
-  Serial.printf("\nHello, starting now..\n");
 
   for (int i = 0; i < 8; i++) {
     swSerial[i] = NULL;
@@ -100,19 +104,20 @@ void setupApp() {
     Serial.printf("Got IP %s\n", WiFi.localIP().toString().c_str());
   }
 
+#ifdef REMOTE_DEBUG
 #ifndef DEBUG_DISABLED
-  Debug.begin(HOST_NAME, RemoteDebug::DEBUG);  // Initialize the WiFi server
-  Debug.setResetCmdEnabled(true);              // Enable the reset command
-  Debug.showProfiler(
+  sensesp::Debug.begin(HOST_NAME, RemoteDebug::DEBUG);  // Initialize the WiFi server
+  sensesp::Debug.setResetCmdEnabled(true);              // Enable the reset command
+  sensesp::Debug.showProfiler(
       false);  // Profiler (Good to measure times, to optimize codes)
-  Debug.showTime(true);
-  Debug.showColors(true);  // Colors
-  Debug.setSerialEnabled(true);
-  Debug.setHelpProjectsCmds(
+  sensesp::Debug.showTime(true);
+  sensesp::Debug.showColors(true);  // Colors
+  sensesp::Debug.setSerialEnabled(true);
+  sensesp::Debug.setHelpProjectsCmds(
       "compass calibrate - Calibrate AHRS/Compass\n"
       "compass offset %i - Add/Subtract value from heading in degree\n"
       "compass save - Save calibration and bias to EEPROM");
-  Debug.setCallBackProjectCmds([]() {
+  sensesp::Debug.setCallBackProjectCmds([]() {
     char s[256];
     std::vector<String> token;
     strcpy(s, Debug.getLastCommand().c_str());
@@ -124,6 +129,7 @@ void setupApp() {
     std::for_each(token.cbegin(), token.cend(),
                   [](const String &s) { debugI("Got token: '%s'", s); });
   });
+#endif
 #endif
 
   ArduinoOTA.setHostname(HOST_NAME);
@@ -176,8 +182,8 @@ void setupApp() {
   // pinMode(GPIO_NUM_18, OUTPUT);
 
   SPIFFS.begin(true);
-  httpServer = new HTTPServer(
-      []() {
+  httpServer = new HTTPServer();
+/*      []() {
         debugW("Resetting the device configuration.");
         // networking_->reset_settings();
         SPIFFS.format();
@@ -198,15 +204,15 @@ void setupApp() {
 
         response->printf("SSID: %s\n", WiFi.SSID().c_str());
 
-        /*
-        response->printf("Signal K server address: %s\n",
-                         ws_client_->get_server_address().c_str());
-        response->printf("Signal K server port: %d\n",
-                         ws_client_->get_server_port());
-        */
+        
+        //response->printf("Signal K server address: %s\n",
+        //                 ws_client_->get_server_address().c_str());
+        //response->printf("Signal K server port: %d\n",
+        //                 ws_client_->get_server_port());
         request->send(response);
       });
-  httpServer->enable();
+      */
+  httpServer->start();
   MDNS.addService("http", "tcp", 80);
 
   auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
@@ -349,10 +355,8 @@ void setupApp() {
 #ifndef DEBUG_DISABLED  
   app.onRepeat(1, []() { Debug.handle(); });
 #endif
-  Enable::enable_all();
+  //Enable::enable_all();
 }
-
-ReactESP app(setupApp);
 
 void configureUbloxM8Gps() {
   // Use HardwareSerial2 to configure GPS, since Baudrate of 115200 is

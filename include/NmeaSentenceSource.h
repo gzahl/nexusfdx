@@ -1,13 +1,13 @@
 #ifndef _NmeaSentenceSource_H_
 #define _NmeaSentenceSource_H_
 
-#include "sensors/sensor.h"
-#include "system/observablevalue.h"
+#include "sensesp/sensors/sensor.h"
+#include "sensesp/system/observable.h"
 
-class NmeaSentenceSource : public Sensor, public ValueProducer<String>, public ValueConsumer<String> {
+class NmeaSentenceSource : public sensesp::Sensor, public sensesp::ValueProducer<String>, public sensesp::ValueConsumer<String> {
  public:
   NmeaSentenceSource(Stream *rx_stream, const char* name);
-  virtual void enable() override final;
+  virtual void start() override final;
   void set_input(String new_value, uint8_t input_channel);
 
  private:

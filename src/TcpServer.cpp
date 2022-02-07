@@ -1,5 +1,7 @@
 #include "TcpServer.h"
 
+using sensesp::Debug;
+
 TcpServer::TcpServer(uint16_t port) {
   asyncServer = new AsyncServer(port);
   debugI("Started TCP Server on port: %u", port);

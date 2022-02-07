@@ -1,5 +1,10 @@
 #include "Icm20948.h"
 
+#include "ReactESP.h"
+extern reactesp::ReactESP app;
+
+using sensesp::Debug;
+
 Icm20948::Icm20948(String config_path) : Sensor(config_path) {
   eulerAngles.yaw = 0.0;
   heading_offset_ = 274. - 360 - 16.;
@@ -10,7 +15,7 @@ Icm20948::Icm20948(String config_path) : Sensor(config_path) {
   enabled = false;
 }
 
-void Icm20948::enable() {
+void Icm20948::start() {
   debugI("Enabling icm20948!");
 
   WIRE_PORT.begin();
@@ -71,7 +76,7 @@ void Icm20948::enable() {
   if (success) {
     enabled = true;
 
-    auto copyToMeanGravity = new LambdaConsumer<mmath::Vector<3, double>>(
+    auto copyToMeanGravity = new sensesp::LambdaConsumer<mmath::Vector<3, double>>(
         [this](mmath::Vector<3, double> grav) {
           this->mean_gravity = grav;
         });

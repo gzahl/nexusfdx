@@ -9,9 +9,10 @@
 #include "ICM_20948.h"
 #include "pwrUtility.hpp"
 #include "sensesp.h"
-#include "sensors/sensor.h"
-#include "system/observablevalue.h"
-#include "system/lambda_consumer.h"
+#include "sensesp/sensors/sensor.h"
+#include "sensesp/system/observablevalue.h"
+#include "sensesp/system/lambda_consumer.h"
+
 #include "transforms/moving_average.h"
 
 #define WIRE_PORT Wire
@@ -21,20 +22,20 @@ struct EulerAngles {
 };
 
 struct IcmData {
-  ObservableValue<double> pitch;
-  ObservableValue<double> roll;
-  ObservableValue<double> yaw;
-  ObservableValue<double> pitch_rate;
-  ObservableValue<double> roll_rate;
-  ObservableValue<double> yaw_rate;
-  ObservableValue<int16_t> accuracy;
-  ObservableValue<mmath::Vector<3, double>> gravity;
+  sensesp::ObservableValue<double> pitch;
+  sensesp::ObservableValue<double> roll;
+  sensesp::ObservableValue<double> yaw;
+  sensesp::ObservableValue<double> pitch_rate;
+  sensesp::ObservableValue<double> roll_rate;
+  sensesp::ObservableValue<double> yaw_rate;
+  sensesp::ObservableValue<int16_t> accuracy;
+  sensesp::ObservableValue<mmath::Vector<3, double>> gravity;
 };
 
-class Icm20948 : Sensor {
+class Icm20948 : sensesp::Sensor {
  public:
   Icm20948(String config_path);
-  virtual void enable() override final;
+  virtual void start() override final;
   IcmData data;
 
  private:
