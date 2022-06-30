@@ -338,6 +338,7 @@ void setup() {
         ->connect_to(new MovingAverage<float, float>(5))
         ->connect_to(new NmeaMessage<float>(MessageType::NMEA_ROT))
         ->connect_to(nmeaSentenceReporter);
+    icm->start();
   }
 
   if (ENABLE_DEMOPRODUCER) {

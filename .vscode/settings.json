@@ -3,6 +3,10 @@
         "functional": "cpp",
         "new": "cpp",
         "system_error": "cpp",
-        "forward_list": "cpp"
+        "forward_list": "cpp",
+        "*.tcc": "cpp",
+        "bitset": "cpp",
+        "cstdlib": "cpp",
+        "regex": "cpp"
     }
 }
