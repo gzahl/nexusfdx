@@ -170,8 +170,8 @@ void setup() {
                   23);  // Telnet server of RemoteDebug, register as telnet
 #endif
 
-  networkPublisher = new UdpServer(BROADCAST_PORT);
-  //networkPublisher = new TcpServer(TCP_SERVER_PORT);
+  //networkPublisher = new UdpServer(BROADCAST_PORT);
+  networkPublisher = new TcpServer(TCP_SERVER_PORT);
   MDNS.addService("nmea_multiplexer", "tcp", TCP_SERVER_PORT);
   debugPublisher = new UdpServer(BROADCAST_PORT + 1);
   //debugPublisher = new TcpServer(TCP_SERVER_PORT + 1);
@@ -182,8 +182,8 @@ void setup() {
   // pinMode(GPIO_NUM_18, OUTPUT);
 
   SPIFFS.begin(true);
-  httpServer = new HTTPServer();
-/*      []() {
+  /*httpServer = new HTTPServer();
+      []() {
         debugW("Resetting the device configuration.");
         // networking_->reset_settings();
         SPIFFS.format();
@@ -211,8 +211,8 @@ void setup() {
         //                 ws_client_->get_server_port());
         request->send(response);
       });
-      */
   httpServer->start();
+  */
   MDNS.addService("http", "tcp", 80);
 
   auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
