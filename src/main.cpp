@@ -17,6 +17,7 @@
 #include "sensesp/transforms/lambda_transform.h"
 #include "sensesp_app.h"
 #include "sensesp_app_builder.h"
+#include "sensesp/net/ota.h"
 
 #include "transforms/moving_average.h"
 
@@ -89,6 +90,7 @@ void setup() {
   }
 
   Serial.printf("Connecting to Wifi Station with ssid '%s'.\n", ssid);
+  WiFi.setHostname(HOST_NAME);
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   WiFi.setSleep(false);
@@ -173,8 +175,8 @@ void setup() {
   //networkPublisher = new UdpServer(BROADCAST_PORT);
   networkPublisher = new TcpServer(TCP_SERVER_PORT);
   MDNS.addService("nmea_multiplexer", "tcp", TCP_SERVER_PORT);
-  debugPublisher = new UdpServer(BROADCAST_PORT + 1);
-  //debugPublisher = new TcpServer(TCP_SERVER_PORT + 1);
+  //debugPublisher = new UdpServer(BROADCAST_PORT + 1);
+  debugPublisher = new TcpServer(TCP_SERVER_PORT + 1);
   MDNS.addService("fdx_stream", "tcp", TCP_SERVER_PORT + 1);
 
   // swSerial.begin(9600, SWSERIAL_8S1, GPIO_NUM_21);
@@ -213,6 +215,7 @@ void setup() {
       });
   httpServer->start();
   */
+  
   MDNS.addService("http", "tcp", 80);
 
   auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
@@ -352,9 +355,9 @@ void setup() {
     });
   }
 
-  //app.onRepeat(20, []() { ArduinoOTA.handle(); });
 #ifndef DEBUG_DISABLED  
-  app.onRepeat(1, []() { Debug.handle(); });
+  app.onRepeat(1, []() { Debug.handle(); 
+  ArduinoOTA.handle();});
 #endif
   //Enable::enable_all();
 }
