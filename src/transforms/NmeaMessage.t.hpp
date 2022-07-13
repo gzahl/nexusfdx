@@ -42,6 +42,12 @@ void NmeaMessage<T>::set_input(T input, uint8_t inputChannel) {
         this->emit(writeSentenceXDR('S', 'P', "SIGNAL_STRENGTH", inputs[0]));
       }
       break;
+    case (NMEA_XDR_DMP_ACCURACY):
+      if(received == 0b1) {
+        received = 0;
+        this->emit(writeSentenceXDR('S', 'P', "DMP_ACCURACY", inputs[0]));
+      }
+      break;
     case (NMEA_XDR_PITCH):
       if (received == 0b1) {
         received = 0;

@@ -7,7 +7,7 @@ using sensesp::Debug;
 
 Icm20948::Icm20948(String config_path) : Sensor(config_path) {
   eulerAngles.yaw = 0.0;
-  heading_offset_ = 274. - 360 - 16.;
+  heading_offset_ = 0.0;
   gravity_ = mmath::Vector<3, double>(0., 0., 1.);
   calibration_ = mmath::Quaternion<double>(1., 0., 0., 0.);
   calibrate_ = false;
@@ -38,7 +38,7 @@ void Icm20948::start() {
   }
 
   success &= (icm.initializeDMP() == ICM_20948_Stat_Ok);
-  success &= (icm.enableDMPSensor(INV_ICM20948_SENSOR_ORIENTATION) ==
+  success &= (icm.enableDMPSensor(INV_ICM20948_SENSOR_ROTATION_VECTOR) ==
               ICM_20948_Stat_Ok);
   success &=
       (icm.enableDMPSensor(INV_ICM20948_SENSOR_GYROSCOPE) == ICM_20948_Stat_Ok);
@@ -76,10 +76,11 @@ void Icm20948::start() {
   if (success) {
     enabled = true;
 
-    auto copyToMeanGravity = new sensesp::LambdaConsumer<mmath::Vector<3, double>>(
-        [this](mmath::Vector<3, double> grav) {
-          this->mean_gravity = grav;
-        });
+    auto copyToMeanGravity =
+        new sensesp::LambdaConsumer<mmath::Vector<3, double>>(
+            [this](mmath::Vector<3, double> grav) {
+              this->mean_gravity = grav;
+            });
     data.gravity
         .connect_to(new MovingAverage<mmath::Vector<3, double>, double>(250))
         ->connect_to(copyToMeanGravity);
@@ -107,12 +108,13 @@ void Icm20948::start() {
 
           // auto quat_calibrated = calibration * quaternion *
           // conj(calibration);
-          auto quat_calibrated = calibration_ * quaternion;
+          //auto quat_calibrated = calibration_ * quaternion;
+          auto quat_calibrated = quaternion;
 
           auto euler = quat_calibrated.ToEulerXYZ();
 
-          data.pitch.emit(mmath::Angles::RadToDeg(-euler.x));
-          data.roll.emit(mmath::Angles::RadToDeg(euler.y));
+          data.pitch.emit(mmath::Angles::RadToDeg(euler.x));
+          data.roll.emit(mmath::Angles::RadToDeg(-euler.y));
           data.yaw.emit(mmath::Angles::RadToDeg(euler.z));
 
           data.accuracy.emit(dmpData.Quat9.Data.Accuracy);
@@ -154,8 +156,8 @@ void Icm20948::start() {
 mmath::Quaternion<double> Icm20948::calculateCalibration(
     mmath::Vector<3, double>& gravity, double heading_offset) {
   auto down = mmath::Vector<3, double>(0., 0., 1.);
-      debugI("Using gravity vector for calibration: %f, %f, %f", gravity.x,
-           gravity.y, gravity.z);
+  debugI("Using gravity vector for calibration: %f, %f, %f", gravity.x,
+         gravity.y, gravity.z);
   auto rotateToGravity = rotationBetweenTwoVectors(gravity, down);
   mmath::Quaternion<double> correctToNorth(
       down, mmath::Angles::DegToRad(heading_offset));
@@ -233,8 +235,8 @@ static const char SCHEMA[] PROGMEM = R"###({
     "properties": {
         "heading_offset": { 
           "title": "Heading offset", 
-          "type": "number", "description": 
-          "The offset of the heading, because the sensor is not aligned to the boat axis."
+          "type": "number",
+          "description": "The offset of the heading, because the sensor is not aligned to the boat axis."
           },
         "calibrate" : { 
           "title" : "Run calibration and find gravity.", 
@@ -263,16 +265,27 @@ bool Icm20948::set_configuration(const JsonObject& config) {
       return false;
     }
   }
-  heading_offset_ = config["heading_offset"];
+  setOffset(config["heading_offset"]);
   calibrate_ = config["calibrate"];
   JsonArray gravarr = config["gravity"].as<JsonArray>();
   gravity_.x = gravarr[0].as<double>();
   gravity_.y = gravarr[1].as<double>();
   gravity_.z = gravarr[2].as<double>();
   if (calibrate_) {
-    gravity_ = mean_gravity;
+    setGravity();
     calibrate_ = false;
   }
   calibration_ = calculateCalibration(gravity_, heading_offset_);
   return true;
 }
+
+void Icm20948::calibrate() {
+  icm.calibrate_accel_gyro(1.f, 0, 0);
+  calibration_ = calculateCalibration(gravity_, heading_offset_);
+}
+
+void Icm20948::setGravity() { gravity_ = mean_gravity; }
+
+void Icm20948::setOffset(int offset) { heading_offset_ = offset; }
+
+void Icm20948::saveConfiguration() { save_configuration(); }

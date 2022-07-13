@@ -11,16 +11,14 @@
 #include "TcpServer.h"
 #include "UdpServer.h"
 #include "sensesp.h"
+#include "sensesp/net/ota.h"
 #include "sensesp/system/lambda_consumer.h"
-#include "transforms/NmeaMessage.h"
-#include "transforms/NmeaMessage.t.hpp"
 #include "sensesp/transforms/lambda_transform.h"
 #include "sensesp_app.h"
 #include "sensesp_app_builder.h"
-#include "sensesp/net/ota.h"
-
+#include "transforms/NmeaMessage.h"
+#include "transforms/NmeaMessage.t.hpp"
 #include "transforms/moving_average.h"
-
 
 #define QUOTE(name) #name
 #define STR(macro) QUOTE(macro)
@@ -78,6 +76,8 @@ HTTPServer *httpServer;
 
 reactesp::ReactESP app;
 
+Icm20948 *icm;
+
 void loop() { app.tick(); }
 
 void setup() {
@@ -108,8 +108,9 @@ void setup() {
 
 #ifdef REMOTE_DEBUG
 #ifndef DEBUG_DISABLED
-  sensesp::Debug.begin(HOST_NAME, RemoteDebug::DEBUG);  // Initialize the WiFi server
-  sensesp::Debug.setResetCmdEnabled(true);              // Enable the reset command
+  sensesp::Debug.begin(HOST_NAME,
+                       RemoteDebug::DEBUG);  // Initialize the WiFi server
+  sensesp::Debug.setResetCmdEnabled(true);   // Enable the reset command
   sensesp::Debug.showProfiler(
       false);  // Profiler (Good to measure times, to optimize codes)
   sensesp::Debug.showTime(true);
@@ -117,6 +118,7 @@ void setup() {
   sensesp::Debug.setSerialEnabled(true);
   sensesp::Debug.setHelpProjectsCmds(
       "compass calibrate - Calibrate AHRS/Compass\n"
+      "compass gravity - Set gravity vector from mean gravity\n"
       "compass offset %i - Add/Subtract value from heading in degree\n"
       "compass save - Save calibration and bias to EEPROM");
   sensesp::Debug.setCallBackProjectCmds([]() {
@@ -130,6 +132,23 @@ void setup() {
     }
     std::for_each(token.cbegin(), token.cend(),
                   [](const String &s) { debugI("Got token: '%s'", s); });
+    if (!icm) return;
+    if (token.size() >= 2) {
+      if (token.at(0) == "compass") {
+        if (token.at(1) == "calibrate") {
+          icm->calibrate();
+        } else if (token.at(1) == "gravity") {
+          icm->setGravity();
+        } else if (token.at(1) == "offset") {
+          if (token.size() >= 3) {
+            int offset = atoi(token.at(2).c_str());
+            icm->setOffset(offset);
+          }
+        } else if (token.at(1) == "save") {
+          icm->saveConfiguration();
+        }
+      }
+    }
   });
 #endif
 #endif
@@ -172,10 +191,10 @@ void setup() {
                   23);  // Telnet server of RemoteDebug, register as telnet
 #endif
 
-  //networkPublisher = new UdpServer(BROADCAST_PORT);
+  // networkPublisher = new UdpServer(BROADCAST_PORT);
   networkPublisher = new TcpServer(TCP_SERVER_PORT);
   MDNS.addService("nmea_multiplexer", "tcp", TCP_SERVER_PORT);
-  //debugPublisher = new UdpServer(BROADCAST_PORT + 1);
+  // debugPublisher = new UdpServer(BROADCAST_PORT + 1);
   debugPublisher = new TcpServer(TCP_SERVER_PORT + 1);
   MDNS.addService("fdx_stream", "tcp", TCP_SERVER_PORT + 1);
 
@@ -206,7 +225,7 @@ void setup() {
 
         response->printf("SSID: %s\n", WiFi.SSID().c_str());
 
-        
+
         //response->printf("Signal K server address: %s\n",
         //                 ws_client_->get_server_address().c_str());
         //response->printf("Signal K server port: %d\n",
@@ -215,7 +234,7 @@ void setup() {
       });
   httpServer->start();
   */
-  
+
   MDNS.addService("http", "tcp", 80);
 
   auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
@@ -267,7 +286,8 @@ void setup() {
     fdx = new FdxSource(swSerial[2]);
     NmeaMessage<float> *relativeWindMessage =
         new NmeaMessage<float>(MessageType::NMEA_MWV_RELATIVE);
-    fdx->data.apparantWind.angle.connect_to(new MovingAverage<float, float>(10))
+    fdx->data.apparantWind.angle
+        .connect_to(new MovingAverage<float, float>(10))
         ->connect_to(relativeWindMessage, 0);
     fdx->data.apparantWind.speed.connect_to(new MovingAverage<float, float>(5))
         ->connect_to(relativeWindMessage, 1);
@@ -324,7 +344,6 @@ void setup() {
     gps->connect_to(nmeaSentenceReporter);
   }
 
-  Icm20948 *icm;
   if (ENABLE_ICM20948) {
     icm = new Icm20948("/compass");
     icm->data.pitch
@@ -335,12 +354,16 @@ void setup() {
         ->connect_to(nmeaSentenceReporter);
     icm->data.yaw.connect_to(new NmeaMessage<double>(MessageType::NMEA_HDM))
         ->connect_to(nmeaSentenceReporter);
-    icm->data.yaw_rate
+    icm->data.accuracy
+        .connect_to(
+            new NmeaMessage<double>(MessageType::NMEA_XDR_DMP_ACCURACY))
+        ->connect_to(nmeaSentenceReporter);
+    /*icm->data.yaw_rate
         .connect_to(new LambdaTransform<double, float>(
             [](double in) { return (float)in; }))
         ->connect_to(new MovingAverage<float, float>(5))
         ->connect_to(new NmeaMessage<float>(MessageType::NMEA_ROT))
-        ->connect_to(nmeaSentenceReporter);
+        ->connect_to(nmeaSentenceReporter);*/
     icm->start();
   }
 
@@ -355,11 +378,13 @@ void setup() {
     });
   }
 
-#ifndef DEBUG_DISABLED  
-  app.onRepeat(1, []() { Debug.handle(); 
-  ArduinoOTA.handle();});
+  app.onRepeat(1, []() {
+#ifndef DEBUG_DISABLED
+    Debug.handle();
 #endif
-  //Enable::enable_all();
+    ArduinoOTA.handle();
+  });
+  // Enable::enable_all();
 }
 
 void configureUbloxM8Gps() {

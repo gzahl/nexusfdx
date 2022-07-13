@@ -36,6 +36,10 @@ class Icm20948 : sensesp::Sensor {
  public:
   Icm20948(String config_path);
   virtual void start() override final;
+  void calibrate();
+  void setGravity();
+  void setOffset(int offset);
+  void saveConfiguration();
   IcmData data;
 
  private:
