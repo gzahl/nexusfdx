@@ -108,14 +108,18 @@ void Icm20948::start() {
 
           // auto quat_calibrated = calibration * quaternion *
           // conj(calibration);
-          //auto quat_calibrated = calibration_ * quaternion;
+          // auto quat_calibrated = calibration_ * quaternion;
           auto quat_calibrated = quaternion;
 
           auto euler = quat_calibrated.ToEulerXYZ();
 
           data.pitch.emit(mmath::Angles::RadToDeg(euler.x));
           data.roll.emit(mmath::Angles::RadToDeg(-euler.y));
-          data.yaw.emit(mmath::Angles::RadToDeg(euler.z));
+          auto yaw = mmath::Angles::RadToDeg(euler.z);
+          if (yaw < 0.)
+            data.yaw.emit(yaw + 360.);
+          else
+            data.yaw.emit(yaw);
 
           data.accuracy.emit(dmpData.Quat9.Data.Accuracy);
         }

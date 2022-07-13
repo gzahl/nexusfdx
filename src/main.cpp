@@ -352,11 +352,16 @@ void setup() {
     icm->data.roll
         .connect_to(new NmeaMessage<double>(MessageType::NMEA_XDR_ROLL))
         ->connect_to(nmeaSentenceReporter);
-    icm->data.yaw.connect_to(new NmeaMessage<double>(MessageType::NMEA_HDM))
+    icm->data.yaw
+        ./*connect_to(new LambdaTransform<double, double>([](double in) {
+          if (in < 0.) return in + 360.;
+          return in;
+        }))
+        ->*/
+        connect_to(new NmeaMessage<double>(MessageType::NMEA_HDM))
         ->connect_to(nmeaSentenceReporter);
     icm->data.accuracy
-        .connect_to(
-            new NmeaMessage<double>(MessageType::NMEA_XDR_DMP_ACCURACY))
+        .connect_to(new NmeaMessage<double>(MessageType::NMEA_XDR_DMP_ACCURACY))
         ->connect_to(nmeaSentenceReporter);
     /*icm->data.yaw_rate
         .connect_to(new LambdaTransform<double, float>(
@@ -364,7 +369,6 @@ void setup() {
         ->connect_to(new MovingAverage<float, float>(5))
         ->connect_to(new NmeaMessage<float>(MessageType::NMEA_ROT))
         ->connect_to(nmeaSentenceReporter);*/
-    icm->start();
   }
 
   if (ENABLE_DEMOPRODUCER) {
@@ -378,13 +382,12 @@ void setup() {
     });
   }
 
-  app.onRepeat(1, []() {
 #ifndef DEBUG_DISABLED
-    Debug.handle();
+  app.onRepeat(10, []() { Debug.handle(); });
 #endif
-    ArduinoOTA.handle();
-  });
-  // Enable::enable_all();
+
+  app.onRepeat(20, []() { ArduinoOTA.handle(); });
+  Startable::start_all();
 }
 
 void configureUbloxM8Gps() {
