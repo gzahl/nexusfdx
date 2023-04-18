@@ -4,8 +4,8 @@
 #include <ctime>
 
 #include "FdxSource.h"
-#include "system/valueconsumer.h"
-#include "transforms/transform.h"
+#include "sensesp/system/valueconsumer.h"
+#include "sensesp/transforms/transform.h"
 
 typedef enum {
   NMEA_MWV_TRUE,
@@ -13,6 +13,7 @@ typedef enum {
   NMEA_MTW,
   NMEA_XDR_VOLTAGE,
   NMEA_XDR_SIGNALSTRENGTH,
+  NMEA_XDR_DMP_ACCURACY,
   NMEA_XDR_PITCH,
   NMEA_XDR_ROLL,
   NMEA_DPT,
@@ -24,7 +25,7 @@ typedef enum {
  * @brief Consumes an object and produces a nmea message.
  */
 template<typename T>
-class NmeaMessage : public Transform<T, String> {
+class NmeaMessage : public sensesp::Transform<T, String> {
  public:
   NmeaMessage(MessageType messageType, String config_path = "");
   virtual void set_input(T input, uint8_t input_channel = 0) override;

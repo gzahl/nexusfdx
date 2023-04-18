@@ -4,28 +4,28 @@
 #include <FdxParser.h>
 #include <SoftwareSerial.h>
 
-#include "sensors/sensor.h"
-#include "system/observablevalue.h"
+#include "sensesp/sensors/sensor.h"
+#include "sensesp/system/observablevalue.h"
 
 typedef struct {
-  ObservableValue<float> angle;
-  ObservableValue<float> speed;
+  sensesp::ObservableValue<float> angle;
+  sensesp::ObservableValue<float> speed;
 } ObsWindType;
 
 struct Data {
   ObsWindType apparantWind;
   ObsWindType trueWind;
-  ObservableValue<float> temperature;
-  ObservableValue<float> voltage;
-  ObservableValue<float> signalStrength;
-  ObservableValue<float> depth;
-  ObservableValue<String> rawMessage;
+  sensesp::ObservableValue<float> temperature;
+  sensesp::ObservableValue<float> voltage;
+  sensesp::ObservableValue<float> signalStrength;
+  sensesp::ObservableValue<float> depth;
+  sensesp::ObservableValue<String> rawMessage;
 };
 
-class FdxSource : public Sensor {
+class FdxSource : public sensesp::Sensor {
  public:
   FdxSource(SoftwareSerial *rx_stream);
-  virtual void enable() override final;
+  virtual void start() override final;
   Data data;
 
  private:

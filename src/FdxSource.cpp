@@ -2,12 +2,17 @@
 
 #include "sensesp.h"
 
+#include "ReactESP.h"
+extern reactesp::ReactESP app;
+
+using sensesp::Debug;
+
 FdxSource::FdxSource(SoftwareSerial *rx_stream) : Sensor(), fdxParser() {
   rx_stream_ = rx_stream;
   len = 0;
 }
 
-void FdxSource::enable() {
+void FdxSource::start() {
   // enable reading the serial port
   debugI("Enabling FdxSource!");
   app.onAvailable(*rx_stream_, [this]() {

@@ -11,12 +11,14 @@
 #include "TcpServer.h"
 #include "UdpServer.h"
 #include "sensesp.h"
-#include "system/lambda_consumer.h"
+#include "sensesp/net/ota.h"
+#include "sensesp/system/lambda_consumer.h"
+#include "sensesp/transforms/lambda_transform.h"
+#include "sensesp_app.h"
+#include "sensesp_app_builder.h"
 #include "transforms/NmeaMessage.h"
 #include "transforms/NmeaMessage.t.hpp"
-#include "transforms/lambda_transform.h"
 #include "transforms/moving_average.h"
-#include "wiring_helpers.h"
 
 #define QUOTE(name) #name
 #define STR(macro) QUOTE(macro)
@@ -66,25 +68,29 @@ NetworkPublisher *networkPublisher;
 NetworkPublisher *debugPublisher;
 
 SoftwareSerial *swSerial[8];
-StringProducer *demoProducer;
+
+using namespace sensesp;
+sensesp::StringProducer *demoProducer;
 
 HTTPServer *httpServer;
 
+reactesp::ReactESP app;
 
-#ifndef DEBUG_DISABLED
-RemoteDebug Debug;
+Icm20948 *icm;
+
+void loop() { app.tick(); }
+
+void setup() {
+#ifndef SERIAL_DEBUG_DISABLED
+  sensesp::SetupSerialDebug(115200);
 #endif
-
-
-void setupApp() {
-  Serial.begin(115200);
-  Serial.printf("\nHello, starting now..\n");
 
   for (int i = 0; i < 8; i++) {
     swSerial[i] = NULL;
   }
 
   Serial.printf("Connecting to Wifi Station with ssid '%s'.\n", ssid);
+  WiFi.setHostname(HOST_NAME);
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   WiFi.setSleep(false);
@@ -100,19 +106,22 @@ void setupApp() {
     Serial.printf("Got IP %s\n", WiFi.localIP().toString().c_str());
   }
 
+#ifdef REMOTE_DEBUG
 #ifndef DEBUG_DISABLED
-  Debug.begin(HOST_NAME, RemoteDebug::DEBUG);  // Initialize the WiFi server
-  Debug.setResetCmdEnabled(true);              // Enable the reset command
-  Debug.showProfiler(
+  sensesp::Debug.begin(HOST_NAME,
+                       RemoteDebug::DEBUG);  // Initialize the WiFi server
+  sensesp::Debug.setResetCmdEnabled(true);   // Enable the reset command
+  sensesp::Debug.showProfiler(
       false);  // Profiler (Good to measure times, to optimize codes)
-  Debug.showTime(true);
-  Debug.showColors(true);  // Colors
-  Debug.setSerialEnabled(true);
-  Debug.setHelpProjectsCmds(
+  sensesp::Debug.showTime(true);
+  sensesp::Debug.showColors(true);  // Colors
+  sensesp::Debug.setSerialEnabled(true);
+  sensesp::Debug.setHelpProjectsCmds(
       "compass calibrate - Calibrate AHRS/Compass\n"
+      "compass gravity - Set gravity vector from mean gravity\n"
       "compass offset %i - Add/Subtract value from heading in degree\n"
       "compass save - Save calibration and bias to EEPROM");
-  Debug.setCallBackProjectCmds([]() {
+  sensesp::Debug.setCallBackProjectCmds([]() {
     char s[256];
     std::vector<String> token;
     strcpy(s, Debug.getLastCommand().c_str());
@@ -123,7 +132,25 @@ void setupApp() {
     }
     std::for_each(token.cbegin(), token.cend(),
                   [](const String &s) { debugI("Got token: '%s'", s); });
+    if (!icm) return;
+    if (token.size() >= 2) {
+      if (token.at(0) == "compass") {
+        if (token.at(1) == "calibrate") {
+          icm->calibrate();
+        } else if (token.at(1) == "gravity") {
+          icm->setGravity();
+        } else if (token.at(1) == "offset") {
+          if (token.size() >= 3) {
+            int offset = atoi(token.at(2).c_str());
+            icm->setOffset(offset);
+          }
+        } else if (token.at(1) == "save") {
+          icm->saveConfiguration();
+        }
+      }
+    }
   });
+#endif
 #endif
 
   ArduinoOTA.setHostname(HOST_NAME);
@@ -164,11 +191,11 @@ void setupApp() {
                   23);  // Telnet server of RemoteDebug, register as telnet
 #endif
 
-  networkPublisher = new UdpServer(BROADCAST_PORT);
-  //networkPublisher = new TcpServer(TCP_SERVER_PORT);
+  // networkPublisher = new UdpServer(BROADCAST_PORT);
+  networkPublisher = new TcpServer(TCP_SERVER_PORT);
   MDNS.addService("nmea_multiplexer", "tcp", TCP_SERVER_PORT);
-  debugPublisher = new UdpServer(BROADCAST_PORT + 1);
-  //debugPublisher = new TcpServer(TCP_SERVER_PORT + 1);
+  // debugPublisher = new UdpServer(BROADCAST_PORT + 1);
+  debugPublisher = new TcpServer(TCP_SERVER_PORT + 1);
   MDNS.addService("fdx_stream", "tcp", TCP_SERVER_PORT + 1);
 
   // swSerial.begin(9600, SWSERIAL_8S1, GPIO_NUM_21);
@@ -176,7 +203,7 @@ void setupApp() {
   // pinMode(GPIO_NUM_18, OUTPUT);
 
   SPIFFS.begin(true);
-  httpServer = new HTTPServer(
+  /*httpServer = new HTTPServer();
       []() {
         debugW("Resetting the device configuration.");
         // networking_->reset_settings();
@@ -198,15 +225,16 @@ void setupApp() {
 
         response->printf("SSID: %s\n", WiFi.SSID().c_str());
 
-        /*
-        response->printf("Signal K server address: %s\n",
-                         ws_client_->get_server_address().c_str());
-        response->printf("Signal K server port: %d\n",
-                         ws_client_->get_server_port());
-        */
+
+        //response->printf("Signal K server address: %s\n",
+        //                 ws_client_->get_server_address().c_str());
+        //response->printf("Signal K server port: %d\n",
+        //                 ws_client_->get_server_port());
         request->send(response);
       });
-  httpServer->enable();
+  httpServer->start();
+  */
+
   MDNS.addService("http", "tcp", 80);
 
   auto nmeaSentenceReporter = new LambdaConsumer<String>([](String msg) {
@@ -258,7 +286,8 @@ void setupApp() {
     fdx = new FdxSource(swSerial[2]);
     NmeaMessage<float> *relativeWindMessage =
         new NmeaMessage<float>(MessageType::NMEA_MWV_RELATIVE);
-    fdx->data.apparantWind.angle.connect_to(new MovingAverage<float, float>(10))
+    fdx->data.apparantWind.angle
+        .connect_to(new MovingAverage<float, float>(10))
         ->connect_to(relativeWindMessage, 0);
     fdx->data.apparantWind.speed.connect_to(new MovingAverage<float, float>(5))
         ->connect_to(relativeWindMessage, 1);
@@ -315,7 +344,6 @@ void setupApp() {
     gps->connect_to(nmeaSentenceReporter);
   }
 
-  Icm20948 *icm;
   if (ENABLE_ICM20948) {
     icm = new Icm20948("/compass");
     icm->data.pitch
@@ -324,14 +352,23 @@ void setupApp() {
     icm->data.roll
         .connect_to(new NmeaMessage<double>(MessageType::NMEA_XDR_ROLL))
         ->connect_to(nmeaSentenceReporter);
-    icm->data.yaw.connect_to(new NmeaMessage<double>(MessageType::NMEA_HDM))
+    icm->data.yaw
+        ./*connect_to(new LambdaTransform<double, double>([](double in) {
+          if (in < 0.) return in + 360.;
+          return in;
+        }))
+        ->*/
+        connect_to(new NmeaMessage<double>(MessageType::NMEA_HDM))
         ->connect_to(nmeaSentenceReporter);
-    icm->data.yaw_rate
+    icm->data.accuracy
+        .connect_to(new NmeaMessage<double>(MessageType::NMEA_XDR_DMP_ACCURACY))
+        ->connect_to(nmeaSentenceReporter);
+    /*icm->data.yaw_rate
         .connect_to(new LambdaTransform<double, float>(
             [](double in) { return (float)in; }))
         ->connect_to(new MovingAverage<float, float>(5))
         ->connect_to(new NmeaMessage<float>(MessageType::NMEA_ROT))
-        ->connect_to(nmeaSentenceReporter);
+        ->connect_to(nmeaSentenceReporter);*/
   }
 
   if (ENABLE_DEMOPRODUCER) {
@@ -345,14 +382,13 @@ void setupApp() {
     });
   }
 
-  //app.onRepeat(20, []() { ArduinoOTA.handle(); });
-#ifndef DEBUG_DISABLED  
-  app.onRepeat(1, []() { Debug.handle(); });
+#ifndef DEBUG_DISABLED
+  app.onRepeat(10, []() { Debug.handle(); });
 #endif
-  Enable::enable_all();
-}
 
-ReactESP app(setupApp);
+  app.onRepeat(20, []() { ArduinoOTA.handle(); });
+  Startable::start_all();
+}
 
 void configureUbloxM8Gps() {
   // Use HardwareSerial2 to configure GPS, since Baudrate of 115200 is

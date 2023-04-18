@@ -4,12 +4,17 @@
 
 #include "sensesp.h"
 
+#include "ReactESP.h"
+extern reactesp::ReactESP app;
+
+using sensesp::Debug;
+
 NmeaSentenceSource::NmeaSentenceSource(Stream *rx_stream, const char* name) : Sensor(), ValueProducer(), ValueConsumer(), name_(name) {
   rx_stream_ = rx_stream;
   current_state = &NmeaSentenceSource::state_start;
 }
 
-void NmeaSentenceSource::enable() {
+void NmeaSentenceSource::start() {
   // enable reading the serial port
   debugI("Enabling NmeaSentenceSource!");
   app.onAvailable(*rx_stream_, [this]() {
