@@ -1,5 +1,5 @@
-#ifndef MESSAGE_PROCESSOR_H
-#define MESSAGE_PROCESSOR_H
+#ifndef FDX_READER_H
+#define FDX_READER_H
 
 #include <cstdio>
 #include <functional>
@@ -47,9 +47,9 @@ struct FdxMessage {
     std::function<float(const int *)> calculate;
 };
 
-class MessageProcessor {
+class FdxReader {
 public:
-    MessageProcessor();
+    FdxReader();
     MessageState processMessage(int msg9_Rx, int parity = 0);
 
 private:

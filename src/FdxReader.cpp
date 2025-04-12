@@ -1,8 +1,7 @@
-#include "MessageProcessor.h"
-
+#include "FdxReader.h"
 
 // Define the lookup table for FDX messages
-const FdxMessage MessageProcessor::FdxMessages[] = {
+const FdxMessage FdxReader::FdxMessages[] = {
     {0, 4, "BSP", "kn", [](const int *data)
      { return float((data[1] + 256 * data[2])) / 100; }},
     {1, 6, "AWS", "m/s", [](const int *data)
@@ -23,9 +22,9 @@ const FdxMessage MessageProcessor::FdxMessages[] = {
     {34, 9, "BTW/CTS/DTW", "°/°/nm", nullptr},
     {35, 7, "BOD/XTE", "°/nm", nullptr},
     {98, 4, "TWD", "°", nullptr}};
-const int MessageProcessor::FdxMessagesSize = sizeof(FdxMessages) / sizeof(FdxMessages[0]);
+const int FdxReader::FdxMessagesSize = sizeof(FdxMessages) / sizeof(FdxMessages[0]);
 
-const FdxMessage* MessageProcessor::findMessage(uint8_t fdxNr) const {
+const FdxMessage* FdxReader::findMessage(uint8_t fdxNr) const {
     for (int i = 0; i < FdxMessagesSize; ++i) {
         if (FdxMessages[i].nr == fdxNr) {
             return &FdxMessages[i];
@@ -34,9 +33,9 @@ const FdxMessage* MessageProcessor::findMessage(uint8_t fdxNr) const {
     return nullptr;
 }
 
-MessageProcessor::MessageProcessor() : state() {}
+FdxReader::FdxReader() : state() {}
 
-MessageState MessageProcessor::processMessage(int msg8, int parity) {
+MessageState FdxReader::processMessage(int msg8, int parity) {
     const bool hasParity = (parity == 1);
 
     printf("processMessage: msg8=%d, parity=%d\n", msg8, parity);
@@ -60,15 +59,15 @@ MessageState MessageProcessor::processMessage(int msg8, int parity) {
     return state;
 }
 
-bool MessageProcessor::isHeaderByte(int msg8, bool hasParity) const {
+bool FdxReader::isHeaderByte(int msg8, bool hasParity) const {
     return hasParity && !(msg8 & BIT7_MASK);
 }
 
-bool MessageProcessor::isNewSenderByte(int msg8) const {
+bool FdxReader::isNewSenderByte(int msg8) const {
     return msg8 & BIT7_MASK;
 }
 
-MessageState MessageProcessor::processHeader(int msg8) {
+MessageState FdxReader::processHeader(int msg8) {
     state = MessageState();
     state.fdxNr = msg8 & 0x7F;
 
@@ -82,12 +81,12 @@ MessageState MessageProcessor::processHeader(int msg8) {
     return state;
 }
 
-void MessageProcessor::processNewSender(int msg8) {
+void FdxReader::processNewSender(int msg8) {
     state = MessageState();
     printf("New Sender ID: %d\n", msg8 & 0x7F);
 }
 
-void MessageProcessor::processData(int msg8) {
+void FdxReader::processData(int msg8) {
     if (!state.isValid() || !state.addData(msg8)) return;
     
     if (state.hasExpectedLength()) {
@@ -96,7 +95,7 @@ void MessageProcessor::processData(int msg8) {
     }
 }
 
-void MessageProcessor::handleFDXData() {
+void FdxReader::handleFDXData() {
     const FdxMessage* msg = findMessage(state.fdxNr);
     if (!msg || !msg->calculate) {
         printf("Unknown or unsupported FDXnr: %d\n", state.fdxNr);
