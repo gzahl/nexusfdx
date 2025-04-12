@@ -26,7 +26,7 @@ jobs:
     - name: Run tests
       run: |
         # Run tests and save output to a file
-        pio test -e native --junit-output=test-results.xml || true
+        pio test -e native --junit-output-path=test-results.xml || true
         
     - name: Publish Test Results
       uses: EnricoMi/publish-unit-test-result-action@v2
