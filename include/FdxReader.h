@@ -4,11 +4,24 @@
 #include <cstdio>
 #include <functional>
 #include <cstdint>
+#include <vector>
 
 enum class MessageValidity {
     Valid,
     Unknown,
     Invalid
+};
+
+struct ValueCalculator {
+    const char* label;
+    const char* unit;
+    std::function<float(const int*)> calculate;
+};
+
+struct FdxMessage {
+    int nr;
+    int len;
+    std::vector<ValueCalculator> values;
 };
 
 struct MessageState {
@@ -24,6 +37,7 @@ struct MessageState {
     int data[MAX_DATA_SIZE] = {0};
     MessageValidity validity = MessageValidity::Valid;
     bool isComplete = false;
+    const FdxMessage* message = nullptr;
 
     bool isValid() const { return validity == MessageValidity::Valid; }
     void markInvalid() { validity = MessageValidity::Invalid; }
@@ -39,14 +53,6 @@ struct MessageState {
     }
 };
 
-struct FdxMessage {
-    int nr;
-    int len;
-    const char *label;
-    const char *unit;
-    std::function<float(const int *)> calculate;
-};
-
 class FdxReader {
 public:
     FdxReader();
@@ -55,6 +61,9 @@ public:
 private:
     static const int PARITY_MASK = 0x100;
     static const int BIT7_MASK = 0x80;
+    static constexpr float DEGREES_SCALE = 0.005493164f; // 360/65536 - multiplier to convert 16-bit integer to degrees
+    static const FdxMessage FdxMessages[];
+    static const int FdxMessagesSize;
 
     MessageState state;
     
@@ -64,10 +73,6 @@ private:
     void processNewSender(int msg8);
     void processData(int msg8);
     void handleFDXData();
-
-    static const FdxMessage FdxMessages[];
-    static const int FdxMessagesSize;
-
     const FdxMessage* findMessage(uint8_t fdxNr) const;
 };
 
