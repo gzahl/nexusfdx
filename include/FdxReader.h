@@ -5,6 +5,8 @@
 #include <functional>
 #include <cstdint>
 #include <vector>
+#include <unordered_map>
+#include "FdxUtils.h"
 
 enum class MessageValidity {
     Valid,
@@ -19,7 +21,6 @@ struct ValueCalculator {
 };
 
 struct FdxMessage {
-    int nr;
     int len;
     std::vector<ValueCalculator> values;
 };
@@ -51,6 +52,15 @@ struct MessageState {
     bool hasExpectedLength() const { 
         return currentSize == expectedLength - 1; 
     }
+
+    void reset() {
+        currentSize = 0;
+        expectedLength = 0;
+        fdxNr = 0;
+        validity = MessageValidity::Valid;
+        isComplete = false;
+        message = nullptr;
+    }
 };
 
 class FdxReader {
@@ -61,10 +71,7 @@ public:
 private:
     static const int PARITY_MASK = 0x100;
     static const int BIT7_MASK = 0x80;
-    static constexpr float DEGREES_SCALE = 0.005493164f; // 360/65536 - multiplier to convert 16-bit integer to degrees
-    static const FdxMessage FdxMessages[];
-    static const int FdxMessagesSize;
-
+    
     MessageState state;
     
     bool isHeaderByte(int msg8, bool hasParity) const;
