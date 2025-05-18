@@ -1,0 +1,30 @@
+{
+    "name": "NexusFDX",
+    "version": "0.1.0",
+    "description": "A library for processing Nexus FDX messages",
+    "keywords": "sailing, nexus, fdx",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/gzahl/nexusfdx.git"
+    },
+    "authors": [
+        {
+            "name": "Manuel Jung",
+            "email": "manuel.jung@hotmail.com",
+            "maintainer": true
+        }
+    ],
+    "license": "GPL-3.0",
+    "frameworks": "*",
+    "platforms": "*",
+    "dependencies": {
+        "throwtheswitch/Unity": "^2.5.2"
+    },
+    "build": {
+        "includeDir": "include"
+    },
+    "test": {
+        "frameworks": ["unity"],
+        "platforms": ["native"]
+    }
+}
